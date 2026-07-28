@@ -95,31 +95,18 @@ export default function App() {
       const theme = allThemes.find(t=>t.id===activeTheme)||{label:activeTheme};
       const isCarrossel = artType==="carrossel";
       const colorHint = (activeClient?.brandColors||[]).filter(Boolean).join(", ");
-      const canvaId = extractCanvaId(tpl?.url||"");
       const system = isCarrossel
         ? `Você é especialista em Social Media para "${activeClient?.name}" (${activeClient?.niche||theme.label}). ${colorHint?"Cores da marca: "+colorHint+".":""} Crie um CARROSSEL para Instagram. Responda SOMENTE JSON: {"headline":"max 8 palavras","slides":[{"titulo":"","texto":""},{"titulo":"","texto":""},{"titulo":"","texto":""}],"caption":"legenda com emojis max 250 chars","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5","cta":"call to action"}`
         : `Você é especialista em Social Media para "${activeClient?.name}" (${activeClient?.niche||theme.label}). ${colorHint?"Cores da marca: "+colorHint+".":""} Crie post SIMPLES para Instagram. Responda SOMENTE JSON: {"headline":"max 8 palavras","caption":"legenda com emojis max 280 chars","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5","cta":"call to action"}`;
       const messages = [{role:"user",content:`Notícia: "${article.title}"\nResumo: "${article.summary}"\nCrie o conteúdo.`}];
-      const body = {model:"claude-sonnet-4-20250514",max_tokens:canvaId?4096:1000,system,messages};
-      if(canvaId){
-        body.system += `\n\nApós gerar o JSON, copie o design Canva ID "${canvaId}" via copy-design, abra para edição com start-editing-transaction, atualize os textos com perform-editing-operations (update_title com headline, replace_text para textos principais), finalize com commit-editing-transaction e retorne o link do novo design.`;
-        body.mcp_servers = [{type:"url",url:"https://mcp.canva.com/mcp",name:"canva-mcp"}];
-      }
+      const body = {model:"llama-3.3-70b-versatile",max_tokens:1000,system,messages};
       const data = await callClaude(body);
       const textBlocks = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
       const jsonMatch = textBlocks.match(/\{[\s\S]*\}/);
       let postData={};
       if(jsonMatch){ try{postData=JSON.parse(jsonMatch[0].replace(/```json|```/g,"").trim());}catch{} }
-      let canvaLink=null;
-      for(const r of (data.content||[]).filter(b=>b.type==="mcp_tool_result")){
-        const txt=r.content?.[0]?.text||"";
-        try{const p=JSON.parse(txt);canvaLink=p.url||p.canva_link||p.editUrl||p.viewUrl||p.design?.url||null;}catch{}
-        if(!canvaLink){const m=txt.match(/https:\/\/www\.canva\.com\/design\/[A-Za-z0-9_-]+\/[^\s"')]+/);if(m)canvaLink=m[0];}
-        if(canvaLink)break;
-      }
-      if(!canvaLink){const m=textBlocks.match(/https:\/\/www\.canva\.com\/design\/[A-Za-z0-9_-]+\/[^\s"')]+/);if(m)canvaLink=m[0];}
-      setGenerated({...postData,canvaLink,artType,tplLabel:tpl?.label,article});
-      if(canvaLink) notify("🎨 Arte criada no Canva!"); else notify("✨ Conteúdo gerado!");
+      setGenerated({...postData,canvaLink:null,artType,tplLabel:tpl?.label,article});
+      notify("✨ Conteúdo gerado!");
     } catch(e){ notify("Erro: "+e.message,"error"); }
     setGenLoading(false);
   };
@@ -195,14 +182,10 @@ export default function App() {
               </div>
             </>
           )}
-          {localTpl?.url&&extractCanvaId(localTpl.url)&&(
-            <div style={{padding:"10px 14px",background:"#0a2a1a",border:"1px solid #22c55e33",borderRadius:10,marginBottom:16,fontSize:12,color:"#22c55e"}}>
-              ✅ Design Canva detectado — arte será criada automaticamente!
-            </div>
-          )}
+
           <div style={{display:"flex",gap:10}}>
             <button style={S.btnPrimary} onClick={()=>{setSelectedTpl(localTpl);onConfirm(article,localTpl);}}>
-              ✨ {localTpl?.url&&extractCanvaId(localTpl.url)?"Gerar + Criar no Canva":"Gerar Conteúdo"}
+              ✨ Gerar Conteúdo
             </button>
             <button style={S.btnCancel} onClick={onCancel}>Cancelar</button>
           </div>
@@ -391,7 +374,7 @@ export default function App() {
     <div style={S.page}>
       <div style={S.header}>
         <div><div style={S.logo}>M<span style={{color:"#C8A96E"}}>2</span>.0</div><div style={S.logoSub}>AGENTE SOCIAL MEDIA</div></div>
-        {apiOk===false&&<div style={{fontSize:11,color:"#ef4444",background:"#ef444411",border:"1px solid #ef444433",borderRadius:20,padding:"4px 10px"}}>⚠️ Sem API Key</div>}
+        {apiOk===false&&<div style={{fontSize:11,color:"#f97316",background:"#f9731611",border:"1px solid #f9731633",borderRadius:20,padding:"4px 10px"}}>⚠️ Sem Groq Key</div>}
       </div>
       {clients.length===0?(
         <div style={{textAlign:"center",padding:"60px 20px"}}>
@@ -619,7 +602,7 @@ export default function App() {
       <div style={{padding:"0 16px"}}>
         <div style={{background:"#111",border:"1px solid #1e1e1e",borderRadius:14,padding:16,marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>🔑 API Status</div>
-          <div style={{color:apiOk?"#22c55e":"#ef4444",fontSize:14}}>{apiOk===null?"Verificando...":apiOk?"✅ API conectada":"❌ Configure ANTHROPIC_API_KEY no Netlify"}</div>
+          <div style={{color:apiOk?"#22c55e":"#f97316",fontSize:14}}>{apiOk===null?"Verificando...":apiOk?"✅ Groq conectado (Llama 3.3 70B)":"❌ Configure GROQ_API_KEY no Netlify"}</div>
         </div>
         <div style={{background:"#111",border:"1px solid #1e1e1e",borderRadius:14,padding:16,marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>👥 Clientes</div>

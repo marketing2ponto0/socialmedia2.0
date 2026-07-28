@@ -1,15 +1,46 @@
+// Uses Groq API (free) instead of Anthropic
 exports.handler = async (event) => {
-  const headers = {'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type'};
-  if (event.httpMethod==='OPTIONS') return {statusCode:200,headers,body:''};
-  if (!process.env.ANTHROPIC_API_KEY) return {statusCode:500,headers,body:JSON.stringify({error:'ANTHROPIC_API_KEY not set'})};
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+  if (!process.env.GROQ_API_KEY)
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'GROQ_API_KEY not set' }) };
+
   try {
-    const body = JSON.parse(event.body);
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':process.env.ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01'},
-      body:JSON.stringify(body),
+    const { system, messages, max_tokens } = JSON.parse(event.body);
+
+    // Convert Anthropic format → OpenAI/Groq format
+    const groqMessages = [];
+    if (system) groqMessages.push({ role: 'system', content: system });
+    groqMessages.push(...messages);
+
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: groqMessages,
+        max_tokens: max_tokens || 1000,
+        temperature: 0.7,
+      }),
     });
+
     const data = await res.json();
-    return {statusCode:res.status,headers,body:JSON.stringify(data)};
-  } catch(e) { return {statusCode:500,headers,body:JSON.stringify({error:e.message})}; }
+
+    // Convert Groq response → Anthropic format (so App.jsx doesn't need to change)
+    const text = data.choices?.[0]?.message?.content || '';
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ content: [{ type: 'text', text }] }),
+    };
+  } catch (e) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+  }
 };
