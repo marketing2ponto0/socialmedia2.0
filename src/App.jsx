@@ -53,8 +53,7 @@ export default function App() {
   const [generated,setGenerated] = useState(null);
   const [genLoading,setGenLoading] = useState(false);
   const [notification,setNotification] = useState(null);
-  const [customTheme,setCustomTheme] = useState("");
-  const [allThemes,setAllThemes] = useState(ALL_THEMES);
+  const [allThemes,setAllThemes] = useState(()=>[...ALL_THEMES,...(lsGet("customThemes")||[])]);
   const [artType,setArtType] = useState("simples");
   const [selectedTpl,setSelectedTpl] = useState(null);
   const [showTplPicker,setShowTplPicker] = useState(false);
@@ -85,12 +84,24 @@ export default function App() {
     finally{setLoadingTheme(p=>({...p,[themeId]:false}));}
   };
 
+  const addTheme=(t)=>{
+    setAllThemes(p=>p.find(x=>x.id===t.id)?p:[...p,t]);
+    lsSet("customThemes",[...(lsGet("customThemes")||[]).filter(x=>x.id!==t.id),t]);
+  };
+
+  // carrega notícias ao abrir a tela de tema / de todos os conteúdos
+  useEffect(()=>{
+    if(view==="content"&&activeTheme) loadTheme(activeTheme);
+    if(view==="allcontent"&&activeClient) (activeClient.themes||[]).forEach(id=>loadTheme(id));
+  // eslint-disable-next-line
+  },[view,activeTheme,activeClientId]);
+
   const handleGenerateClick = (article)=>{
     setPendingArticle(article); setShowTplPicker(true); setGenerated(null);
   };
 
   const doGenerate = async(article,tpl)=>{
-    setShowTplPicker(false); setGenLoading(true); setGenerated(null);
+    setSelectedTpl(tpl); setShowTplPicker(false); setGenLoading(true); setGenerated(null);
     try {
       const theme = allThemes.find(t=>t.id===activeTheme)||{label:activeTheme};
       const isCarrossel = artType==="carrossel";
@@ -133,162 +144,6 @@ export default function App() {
       </div>
     </div>
   );
-
-  // ── TEMPLATE PICKER ───────────────────────────────────────────────────
-  const TplPicker = ({article,onConfirm,onCancel})=>{
-    const [localTpl,setLocalTpl] = useState(selectedTpl);
-    const feeds = activeClient?.templates?.feeds||[];
-    const stories = activeClient?.templates?.stories||[];
-    return (
-      <div style={S.overlay}>
-        <div style={{...S.formCard,maxWidth:400}}>
-          <div style={S.formTitle}>🎨 Gerar Arte</div>
-          <div style={{fontSize:13,color:"#666",marginBottom:16,lineHeight:1.5}}>"{article.title}"</div>
-          <div style={S.label}>TIPO DE ARTE</div>
-          <div style={{display:"flex",gap:10,marginBottom:20}}>
-            {["simples","carrossel"].map(t=>(
-              <button key={t} onClick={()=>setArtType(t)} style={{flex:1,padding:"12px",borderRadius:12,border:`2px solid ${artType===t?"#C8A96E":"#1e1e1e"}`,background:artType===t?"#C8A96E11":"#0d0d0d",color:artType===t?"#C8A96E":"#555",cursor:"pointer",fontWeight:artType===t?700:400,fontSize:13}}>
-                {t==="simples"?"🖼️ Arte Simples":"📚 Carrossel"}
-              </button>
-            ))}
-          </div>
-          {(feeds.length>0||stories.length>0)&&(
-            <>
-              <div style={S.label}>MODELO DO CLIENTE</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-                {feeds.map(f=>(
-                  <button key={f.id} onClick={()=>setLocalTpl({...f,type:"feed"})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`1px solid ${localTpl?.id===f.id?"#C8A96E":"#1e1e1e"}`,background:localTpl?.id===f.id?"#C8A96E11":"#0d0d0d",cursor:"pointer",textAlign:"left"}}>
-                    <span>🖼️</span>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:13,color:localTpl?.id===f.id?"#C8A96E":"#ccc",fontWeight:600}}>{f.label}</div>
-                      <div style={{fontSize:10,color:"#444"}}>Feed{f.url?" · "+f.url.substring(0,28)+"...":" · sem link"}</div>
-                    </div>
-                    {localTpl?.id===f.id&&<span style={{color:"#C8A96E"}}>✓</span>}
-                  </button>
-                ))}
-                {stories.map(s=>(
-                  <button key={s.id} onClick={()=>setLocalTpl({...s,type:"stories"})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`1px solid ${localTpl?.id===s.id?"#a855f7":"#1e1e1e"}`,background:localTpl?.id===s.id?"#a855f711":"#0d0d0d",cursor:"pointer",textAlign:"left"}}>
-                    <span>📱</span>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:13,color:localTpl?.id===s.id?"#a855f7":"#ccc",fontWeight:600}}>{s.label}</div>
-                      <div style={{fontSize:10,color:"#444"}}>Stories{s.url?" · "+s.url.substring(0,28)+"...":" · sem link"}</div>
-                    </div>
-                    {localTpl?.id===s.id&&<span style={{color:"#a855f7"}}>✓</span>}
-                  </button>
-                ))}
-                <button onClick={()=>setLocalTpl(null)} style={{padding:"8px",borderRadius:10,border:`1px solid ${!localTpl?"#555":"#1e1e1e"}`,background:"transparent",color:!localTpl?"#888":"#444",cursor:"pointer",fontSize:12}}>
-                  Sem modelo — só gerar texto
-                </button>
-              </div>
-            </>
-          )}
-
-          <div style={{display:"flex",gap:10}}>
-            <button style={S.btnPrimary} onClick={()=>{setSelectedTpl(localTpl);onConfirm(article,localTpl);}}>
-              ✨ Gerar Conteúdo
-            </button>
-            <button style={S.btnCancel} onClick={onCancel}>Cancelar</button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ── CLIENT FORM ───────────────────────────────────────────────────────
-  const ClientForm = ({initial,onSave,onCancel})=>{
-    const defTpl = {feeds:[{id:"f"+Date.now(),label:"Feed 1",url:""}],stories:[{id:"s"+Date.now(),label:"Stories 1",url:""}],modelo:""};
-    const normTpl = (t)=>({
-      feeds: Array.isArray(t?.feeds)?t.feeds:[{id:"f1",label:"Feed 1",url:t?.feed||""}],
-      stories: Array.isArray(t?.stories)?t.stories:[{id:"s1",label:"Stories 1",url:typeof t?.stories==="string"?t.stories:""}],
-      modelo:t?.modelo||"",
-    });
-    const [form,setForm] = useState(initial?{...initial,brandColors:initial.brandColors||["","",""],templates:normTpl(initial.templates)}:{name:"",niche:"",themes:[],brandColors:["","",""],templates:defTpl,color:CLIENT_COLORS[0]});
-    const set=(k,v)=>setForm(p=>({...p,[k]:v}));
-    const setTpl=(k,v)=>setForm(p=>({...p,templates:{...p.templates,[k]:v}}));
-    const toggle=(id)=>set("themes",form.themes.includes(id)?form.themes.filter(t=>t!==id):[...form.themes,id]);
-    const addCustom=()=>{
-      const id=customTheme.toLowerCase().replace(/\s+/g,"-");
-      if(id&&!allThemes.find(t=>t.id===id)){setAllThemes(p=>[...p,{id,label:customTheme,icon:"🔖",color:"#888"}]);toggle(id);setCustomTheme("");}
-    };
-    const addTplItem=(type)=>{
-      if((form.templates[type]||[]).length>=6)return;
-      const n=(form.templates[type]||[]).length+1;
-      setTpl(type,[...(form.templates[type]||[]),{id:type[0]+Date.now(),label:`${type==="feeds"?"Feed":"Stories"} ${n}`,url:""}]);
-    };
-    const removeTplItem=(type,id)=>setTpl(type,(form.templates[type]||[]).filter(x=>x.id!==id));
-    const updTplItem=(type,id,field,val)=>setTpl(type,(form.templates[type]||[]).map(x=>x.id===id?{...x,[field]:val}:x));
-    const setBrandColor=(i,v)=>{const c=[...form.brandColors];c[i]=v;set("brandColors",c);};
-
-    const TplList=({type,icon,accent})=>(
-      <div style={{marginBottom:14}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <div style={{fontSize:10,color:"#666",letterSpacing:1.5}}>{icon} {type==="feeds"?"FEED":"STORIES"} ({(form.templates[type]||[]).length}/6)</div>
-          {(form.templates[type]||[]).length<6&&<button onClick={()=>addTplItem(type)} style={{background:"none",border:`1px solid ${accent}44`,borderRadius:20,color:accent,fontSize:11,padding:"3px 10px",cursor:"pointer"}}>+ Adicionar</button>}
-        </div>
-        {(form.templates[type]||[]).map((item,i)=>(
-          <div key={item.id} style={{display:"flex",gap:6,marginBottom:8}}>
-            <div style={{flex:1}}>
-              <input style={{...S.input,marginBottom:4,fontSize:12,padding:"7px 10px"}} value={item.label} onChange={e=>updTplItem(type,item.id,"label",e.target.value)} placeholder={`Nome do modelo ${i+1}`}/>
-              <input style={{...S.input,marginBottom:0,fontSize:11,padding:"7px 10px",fontFamily:"monospace"}} value={item.url} onChange={e=>updTplItem(type,item.id,"url",e.target.value)} placeholder="https://www.canva.com/design/DAxxxxxx/..."/>
-            </div>
-            {(form.templates[type]||[]).length>1&&<button onClick={()=>removeTplItem(type,item.id)} style={{background:"none",border:"none",color:"#444",fontSize:15,cursor:"pointer",padding:"4px"}}>✕</button>}
-          </div>
-        ))}
-      </div>
-    );
-
-    return (
-      <div style={S.overlay}>
-        <div style={S.formCard}>
-          <h2 style={S.formTitle}>{initial?"✏️ Editar Cliente":"➕ Novo Cliente"}</h2>
-          <label style={S.label}>Nome do Cliente</label>
-          <input style={S.input} value={form.name} onChange={e=>set("name",e.target.value)} placeholder="Ex: Clínica Visão Plena"/>
-          <label style={S.label}>Segmento / Nicho</label>
-          <input style={S.input} value={form.niche} onChange={e=>set("niche",e.target.value)} placeholder="Ex: Saúde Ocular"/>
-          <label style={S.label}>Cor de Identificação no App</label>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>
-            {CLIENT_COLORS.map(c=><div key={c} onClick={()=>set("color",c)} style={{width:26,height:26,borderRadius:"50%",background:c,cursor:"pointer",border:form.color===c?"3px solid #fff":"2px solid transparent",boxShadow:form.color===c?`0 0 0 2px ${c}`:"none"}}/>)}
-          </div>
-          <div style={{background:"#0d0d0d",border:"1px solid #1a1a1a",borderRadius:12,padding:"14px 14px 8px",marginBottom:16}}>
-            <div style={{fontSize:10,color:"#C8A96E",letterSpacing:2,marginBottom:12}}>🎨 CORES DA IDENTIDADE VISUAL</div>
-            {["Cor Principal","Cor Secundária","Cor de Destaque"].map((label,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-                <input type="color" value={form.brandColors[i]||"#000000"} onChange={e=>setBrandColor(i,e.target.value)} style={{width:40,height:36,border:"1px solid #2a2a2a",borderRadius:8,cursor:"pointer",padding:2}}/>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:10,color:"#555",marginBottom:3}}>{label}</div>
-                  <input style={{...S.input,marginBottom:0,fontSize:11,fontFamily:"monospace",padding:"6px 10px"}} value={form.brandColors[i]||""} onChange={e=>setBrandColor(i,e.target.value)} placeholder="#000000"/>
-                </div>
-                {form.brandColors[i]&&<div style={{width:24,height:24,borderRadius:6,background:form.brandColors[i],border:"1px solid #333",flexShrink:0}}/>}
-              </div>
-            ))}
-          </div>
-          <label style={S.label}>Temas de Interesse</label>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-            {allThemes.map(t=>(
-              <button key={t.id} onClick={()=>toggle(t.id)} style={{...S.chip,background:form.themes.includes(t.id)?t.color+"33":"#111",border:`1px solid ${form.themes.includes(t.id)?t.color:"#2a2a2a"}`,color:form.themes.includes(t.id)?t.color:"#555"}}>
-                {t.icon} {t.label}
-              </button>
-            ))}
-          </div>
-          <div style={{display:"flex",gap:8,marginBottom:16}}>
-            <input style={{...S.input,flex:1,marginBottom:0}} value={customTheme} onChange={e=>setCustomTheme(e.target.value)} placeholder="Tema personalizado..."/>
-            <button onClick={addCustom} style={S.btnSec}>+ Add</button>
-          </div>
-          <div style={{background:"#0d0d0d",border:"1px solid #1a1a1a",borderRadius:12,padding:"14px 14px 4px",marginBottom:16}}>
-            <div style={{fontSize:10,color:"#C8A96E",letterSpacing:2,marginBottom:14}}>📐 TEMPLATES CANVA</div>
-            <TplList type="feeds" icon="🖼️" accent="#C8A96E"/>
-            <TplList type="stories" icon="📱" accent="#a855f7"/>
-            <label style={{...S.label,marginTop:4}}>📁 Modelo / Padrão Visual</label>
-            <input style={S.input} value={form.templates.modelo||""} onChange={e=>setTpl("modelo",e.target.value)} placeholder="Link de referência (Canva, Drive...)"/>
-          </div>
-          <div style={{display:"flex",gap:12}}>
-            <button style={S.btnPrimary} onClick={()=>{if(form.name)onSave(form);else notify("Informe o nome","error");}}>Salvar</button>
-            <button style={S.btnCancel} onClick={onCancel}>Cancelar</button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // ── GENERATED RESULT PANEL ────────────────────────────────────────────
   const GeneratedPanel = ({theme})=>{
@@ -485,7 +340,6 @@ export default function App() {
   const ContentView = ()=>{
     const themeObj = allThemes.find(t=>t.id===activeTheme)||{label:activeTheme,icon:"🔖",color:"#C8A96E"};
     const articles = newsMap[activeTheme]||[];
-    useEffect(()=>{loadTheme(activeTheme);},[]);
     return (
       <div style={S.page}>
         <div style={S.header}>
@@ -530,7 +384,6 @@ export default function App() {
   const AllContentView = ()=>{
     if(!activeClient) return null;
     const clientThemes = allThemes.filter(t=>activeClient.themes.includes(t.id));
-    useEffect(()=>{clientThemes.forEach(t=>loadTheme(t.id));},[]);
     const total = clientThemes.reduce((a,t)=>(newsMap[t.id]?.length||0)+a,0);
     return (
       <div style={S.page}>
@@ -629,13 +482,13 @@ export default function App() {
           {notification.msg}
         </div>
       )}
-      {view==="home"&&<HomeView/>}
-      {view==="client"&&<ClientView/>}
-      {view==="content"&&<ContentView/>}
-      {view==="allcontent"&&<AllContentView/>}
-      {view==="settings"&&<SettingsView/>}
-      {(view==="add-client"||view==="edit-client")&&<ClientForm initial={editingClient} onSave={saveClient} onCancel={()=>{setView(editingClient?"client":"home");setEditingClient(null);}}/>}
-      {showTplPicker&&pendingArticle&&<TplPicker article={pendingArticle} onConfirm={doGenerate} onCancel={()=>setShowTplPicker(false)}/>}
+      {view==="home"&&HomeView()}
+      {view==="client"&&ClientView()}
+      {view==="content"&&ContentView()}
+      {view==="allcontent"&&AllContentView()}
+      {view==="settings"&&SettingsView()}
+      {(view==="add-client"||view==="edit-client")&&<ClientForm initial={editingClient} allThemes={allThemes} onAddTheme={addTheme} notify={notify} onSave={saveClient} onCancel={()=>{setView(editingClient?"client":"home");setEditingClient(null);}}/>}
+      {showTplPicker&&pendingArticle&&<TplPicker article={pendingArticle} artType={artType} setArtType={setArtType} client={activeClient} onConfirm={doGenerate} onCancel={()=>setShowTplPicker(false)}/>}
       {["home","client","content","allcontent","settings"].includes(view)&&(
         <nav style={S.nav}>
           <button style={{...S.navBtn,color:view==="home"?"#C8A96E":"#444"}} onClick={()=>setView("home")}>
@@ -655,6 +508,165 @@ export default function App() {
     </div>
   );
 }
+
+  // ── TEMPLATE PICKER ───────────────────────────────────────────────────
+function TplPicker({article,onConfirm,onCancel,artType,setArtType,client}){
+    const [localTpl,setLocalTpl] = useState(null);
+    const feeds = client?.templates?.feeds||[];
+    const stories = client?.templates?.stories||[];
+    return (
+      <div style={S.overlay}>
+        <div style={{...S.formCard,maxWidth:400}}>
+          <div style={S.formTitle}>🎨 Gerar Arte</div>
+          <div style={{fontSize:13,color:"#666",marginBottom:16,lineHeight:1.5}}>"{article.title}"</div>
+          <div style={S.label}>TIPO DE ARTE</div>
+          <div style={{display:"flex",gap:10,marginBottom:20}}>
+            {["simples","carrossel"].map(t=>(
+              <button key={t} onClick={()=>setArtType(t)} style={{flex:1,padding:"12px",borderRadius:12,border:`2px solid ${artType===t?"#C8A96E":"#1e1e1e"}`,background:artType===t?"#C8A96E11":"#0d0d0d",color:artType===t?"#C8A96E":"#555",cursor:"pointer",fontWeight:artType===t?700:400,fontSize:13}}>
+                {t==="simples"?"🖼️ Arte Simples":"📚 Carrossel"}
+              </button>
+            ))}
+          </div>
+          {(feeds.length>0||stories.length>0)&&(
+            <>
+              <div style={S.label}>MODELO DO CLIENTE</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+                {feeds.map(f=>(
+                  <button key={f.id} onClick={()=>setLocalTpl({...f,type:"feed"})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`1px solid ${localTpl?.id===f.id?"#C8A96E":"#1e1e1e"}`,background:localTpl?.id===f.id?"#C8A96E11":"#0d0d0d",cursor:"pointer",textAlign:"left"}}>
+                    <span>🖼️</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,color:localTpl?.id===f.id?"#C8A96E":"#ccc",fontWeight:600}}>{f.label}</div>
+                      <div style={{fontSize:10,color:"#444"}}>Feed{f.url?" · "+f.url.substring(0,28)+"...":" · sem link"}</div>
+                    </div>
+                    {localTpl?.id===f.id&&<span style={{color:"#C8A96E"}}>✓</span>}
+                  </button>
+                ))}
+                {stories.map(s=>(
+                  <button key={s.id} onClick={()=>setLocalTpl({...s,type:"stories"})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`1px solid ${localTpl?.id===s.id?"#a855f7":"#1e1e1e"}`,background:localTpl?.id===s.id?"#a855f711":"#0d0d0d",cursor:"pointer",textAlign:"left"}}>
+                    <span>📱</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,color:localTpl?.id===s.id?"#a855f7":"#ccc",fontWeight:600}}>{s.label}</div>
+                      <div style={{fontSize:10,color:"#444"}}>Stories{s.url?" · "+s.url.substring(0,28)+"...":" · sem link"}</div>
+                    </div>
+                    {localTpl?.id===s.id&&<span style={{color:"#a855f7"}}>✓</span>}
+                  </button>
+                ))}
+                <button onClick={()=>setLocalTpl(null)} style={{padding:"8px",borderRadius:10,border:`1px solid ${!localTpl?"#555":"#1e1e1e"}`,background:"transparent",color:!localTpl?"#888":"#444",cursor:"pointer",fontSize:12}}>
+                  Sem modelo — só gerar texto
+                </button>
+              </div>
+            </>
+          )}
+
+          <div style={{display:"flex",gap:10}}>
+            <button style={S.btnPrimary} onClick={()=>{onConfirm(article,localTpl);}}>
+              ✨ Gerar Conteúdo
+            </button>
+            <button style={S.btnCancel} onClick={onCancel}>Cancelar</button>
+          </div>
+        </div>
+      </div>
+    );
+}
+
+
+  // ── CLIENT FORM ───────────────────────────────────────────────────────
+function ClientForm({initial,onSave,onCancel,allThemes,onAddTheme,notify}){
+    const [customTheme,setCustomTheme] = useState("");
+    const defTpl = {feeds:[{id:"f"+Date.now(),label:"Feed 1",url:""}],stories:[{id:"s"+Date.now(),label:"Stories 1",url:""}],modelo:""};
+    const normTpl = (t)=>({
+      feeds: Array.isArray(t?.feeds)?t.feeds:[{id:"f1",label:"Feed 1",url:t?.feed||""}],
+      stories: Array.isArray(t?.stories)?t.stories:[{id:"s1",label:"Stories 1",url:typeof t?.stories==="string"?t.stories:""}],
+      modelo:t?.modelo||"",
+    });
+    const [form,setForm] = useState(initial?{...initial,brandColors:initial.brandColors||["","",""],templates:normTpl(initial.templates)}:{name:"",niche:"",themes:[],brandColors:["","",""],templates:defTpl,color:CLIENT_COLORS[0]});
+    const set=(k,v)=>setForm(p=>({...p,[k]:v}));
+    const setTpl=(k,v)=>setForm(p=>({...p,templates:{...p.templates,[k]:v}}));
+    const toggle=(id)=>set("themes",form.themes.includes(id)?form.themes.filter(t=>t!==id):[...form.themes,id]);
+    const addCustom=()=>{
+      const id=customTheme.toLowerCase().replace(/\s+/g,"-");
+      if(id&&!allThemes.find(t=>t.id===id)){onAddTheme({id,label:customTheme,icon:"🔖",color:"#888"});toggle(id);setCustomTheme("");}
+    };
+    const addTplItem=(type)=>{
+      if((form.templates[type]||[]).length>=6)return;
+      const n=(form.templates[type]||[]).length+1;
+      setTpl(type,[...(form.templates[type]||[]),{id:type[0]+Date.now(),label:`${type==="feeds"?"Feed":"Stories"} ${n}`,url:""}]);
+    };
+    const removeTplItem=(type,id)=>setTpl(type,(form.templates[type]||[]).filter(x=>x.id!==id));
+    const updTplItem=(type,id,field,val)=>setTpl(type,(form.templates[type]||[]).map(x=>x.id===id?{...x,[field]:val}:x));
+    const setBrandColor=(i,v)=>{const c=[...form.brandColors];c[i]=v;set("brandColors",c);};
+
+    const TplList=({type,icon,accent})=>(
+      <div style={{marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <div style={{fontSize:10,color:"#666",letterSpacing:1.5}}>{icon} {type==="feeds"?"FEED":"STORIES"} ({(form.templates[type]||[]).length}/6)</div>
+          {(form.templates[type]||[]).length<6&&<button onClick={()=>addTplItem(type)} style={{background:"none",border:`1px solid ${accent}44`,borderRadius:20,color:accent,fontSize:11,padding:"3px 10px",cursor:"pointer"}}>+ Adicionar</button>}
+        </div>
+        {(form.templates[type]||[]).map((item,i)=>(
+          <div key={item.id} style={{display:"flex",gap:6,marginBottom:8}}>
+            <div style={{flex:1}}>
+              <input style={{...S.input,marginBottom:4,fontSize:12,padding:"7px 10px"}} value={item.label} onChange={e=>updTplItem(type,item.id,"label",e.target.value)} placeholder={`Nome do modelo ${i+1}`}/>
+              <input style={{...S.input,marginBottom:0,fontSize:11,padding:"7px 10px",fontFamily:"monospace"}} value={item.url} onChange={e=>updTplItem(type,item.id,"url",e.target.value)} placeholder="https://www.canva.com/design/DAxxxxxx/..."/>
+            </div>
+            {(form.templates[type]||[]).length>1&&<button onClick={()=>removeTplItem(type,item.id)} style={{background:"none",border:"none",color:"#444",fontSize:15,cursor:"pointer",padding:"4px"}}>✕</button>}
+          </div>
+        ))}
+      </div>
+    );
+
+    return (
+      <div style={S.overlay}>
+        <div style={S.formCard}>
+          <h2 style={S.formTitle}>{initial?"✏️ Editar Cliente":"➕ Novo Cliente"}</h2>
+          <label style={S.label}>Nome do Cliente</label>
+          <input style={S.input} value={form.name} onChange={e=>set("name",e.target.value)} placeholder="Ex: Clínica Visão Plena"/>
+          <label style={S.label}>Segmento / Nicho</label>
+          <input style={S.input} value={form.niche} onChange={e=>set("niche",e.target.value)} placeholder="Ex: Saúde Ocular"/>
+          <label style={S.label}>Cor de Identificação no App</label>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>
+            {CLIENT_COLORS.map(c=><div key={c} onClick={()=>set("color",c)} style={{width:26,height:26,borderRadius:"50%",background:c,cursor:"pointer",border:form.color===c?"3px solid #fff":"2px solid transparent",boxShadow:form.color===c?`0 0 0 2px ${c}`:"none"}}/>)}
+          </div>
+          <div style={{background:"#0d0d0d",border:"1px solid #1a1a1a",borderRadius:12,padding:"14px 14px 8px",marginBottom:16}}>
+            <div style={{fontSize:10,color:"#C8A96E",letterSpacing:2,marginBottom:12}}>🎨 CORES DA IDENTIDADE VISUAL</div>
+            {["Cor Principal","Cor Secundária","Cor de Destaque"].map((label,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                <input type="color" value={form.brandColors[i]||"#000000"} onChange={e=>setBrandColor(i,e.target.value)} style={{width:40,height:36,border:"1px solid #2a2a2a",borderRadius:8,cursor:"pointer",padding:2}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:10,color:"#555",marginBottom:3}}>{label}</div>
+                  <input style={{...S.input,marginBottom:0,fontSize:11,fontFamily:"monospace",padding:"6px 10px"}} value={form.brandColors[i]||""} onChange={e=>setBrandColor(i,e.target.value)} placeholder="#000000"/>
+                </div>
+                {form.brandColors[i]&&<div style={{width:24,height:24,borderRadius:6,background:form.brandColors[i],border:"1px solid #333",flexShrink:0}}/>}
+              </div>
+            ))}
+          </div>
+          <label style={S.label}>Temas de Interesse</label>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+            {allThemes.map(t=>(
+              <button key={t.id} onClick={()=>toggle(t.id)} style={{...S.chip,background:form.themes.includes(t.id)?t.color+"33":"#111",border:`1px solid ${form.themes.includes(t.id)?t.color:"#2a2a2a"}`,color:form.themes.includes(t.id)?t.color:"#555"}}>
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:16}}>
+            <input style={{...S.input,flex:1,marginBottom:0}} value={customTheme} onChange={e=>setCustomTheme(e.target.value)} placeholder="Tema personalizado..."/>
+            <button onClick={addCustom} style={S.btnSec}>+ Add</button>
+          </div>
+          <div style={{background:"#0d0d0d",border:"1px solid #1a1a1a",borderRadius:12,padding:"14px 14px 4px",marginBottom:16}}>
+            <div style={{fontSize:10,color:"#C8A96E",letterSpacing:2,marginBottom:14}}>📐 TEMPLATES CANVA</div>
+            <TplList type="feeds" icon="🖼️" accent="#C8A96E"/>
+            <TplList type="stories" icon="📱" accent="#a855f7"/>
+            <label style={{...S.label,marginTop:4}}>📁 Modelo / Padrão Visual</label>
+            <input style={S.input} value={form.templates.modelo||""} onChange={e=>setTpl("modelo",e.target.value)} placeholder="Link de referência (Canva, Drive...)"/>
+          </div>
+          <div style={{display:"flex",gap:12}}>
+            <button style={S.btnPrimary} onClick={()=>{if(form.name)onSave(form);else notify("Informe o nome","error");}}>Salvar</button>
+            <button style={S.btnCancel} onClick={onCancel}>Cancelar</button>
+          </div>
+        </div>
+      </div>
+    );
+}
+
 
 const S = {
   root:{background:"#080808",minHeight:"100vh",maxWidth:480,margin:"0 auto",fontFamily:"'DM Sans',sans-serif",color:"#fff",paddingBottom:80},
