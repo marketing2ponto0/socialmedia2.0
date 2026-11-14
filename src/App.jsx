@@ -56,6 +56,7 @@ export default function App() {
   const [allThemes,setAllThemes] = useState(()=>[...ALL_THEMES,...(lsGet("customThemes")||[])]);
   const [artType,setArtType] = useState("simples");
   const [selectedTpl,setSelectedTpl] = useState(null);
+  const [promptModal,setPromptModal] = useState(null);
   const [showTplPicker,setShowTplPicker] = useState(false);
   const [pendingArticle,setPendingArticle] = useState(null);
   const [apiOk,setApiOk] = useState(null);
@@ -95,6 +96,15 @@ export default function App() {
     if(view==="allcontent"&&activeClient) (activeClient.themes||[]).forEach(id=>loadTheme(id));
   // eslint-disable-next-line
   },[view,activeTheme,activeClientId]);
+
+  const doCanva=(article,tpl)=>{
+    const theme=allThemes.find(t=>t.id===activeTheme);
+    const g=generated&&generated.article&&generated.article.id===article.id?generated:null;
+    const prompt=buildCanvaPrompt({client:activeClient,tpl,article,artType,generated:g,themeLabel:theme?.label});
+    setSelectedTpl(tpl); setShowTplPicker(false);
+    try{ navigator.clipboard.writeText(prompt).then(()=>notify("📋 Pedido copiado! Cole no Claude")).catch(()=>setPromptModal(prompt)); }catch{ setPromptModal(prompt); }
+    window.open("https://claude.ai/new","_blank");
+  };
 
   const handleGenerateClick = (article)=>{
     setPendingArticle(article); setShowTplPicker(true); setGenerated(null);
@@ -196,6 +206,7 @@ export default function App() {
           </div>
         )}
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {selectedTpl?.url&&generated.article&&<button style={S.btnPrimary} onClick={()=>doCanva(generated.article,selectedTpl)}>🎨 Criar arte no Canva</button>}
           <button style={S.btnCopy} onClick={()=>{
             const txt=generated.slides
               ?`${generated.headline}\n\n${generated.slides.map((s,i)=>`Slide ${i+1}: ${s.titulo}\n${s.texto}`).join("\n\n")}\n\n${generated.caption}\n\n${generated.hashtags}\n\n${generated.cta}`
@@ -488,7 +499,8 @@ export default function App() {
       {view==="allcontent"&&AllContentView()}
       {view==="settings"&&SettingsView()}
       {(view==="add-client"||view==="edit-client")&&<ClientForm initial={editingClient} allThemes={allThemes} onAddTheme={addTheme} notify={notify} onSave={saveClient} onCancel={()=>{setView(editingClient?"client":"home");setEditingClient(null);}}/>}
-      {showTplPicker&&pendingArticle&&<TplPicker article={pendingArticle} artType={artType} setArtType={setArtType} client={activeClient} onConfirm={doGenerate} onCancel={()=>setShowTplPicker(false)}/>}
+      {showTplPicker&&pendingArticle&&<TplPicker article={pendingArticle} artType={artType} setArtType={setArtType} client={activeClient} onConfirm={doGenerate} onCanva={doCanva} onCancel={()=>setShowTplPicker(false)}/>}
+      {promptModal&&<PromptModal text={promptModal} onClose={()=>setPromptModal(null)} notify={notify}/>}
       {["home","client","content","allcontent","settings"].includes(view)&&(
         <nav style={S.nav}>
           <button style={{...S.navBtn,color:view==="home"?"#C8A96E":"#444"}} onClick={()=>setView("home")}>
@@ -510,7 +522,7 @@ export default function App() {
 }
 
   // ── TEMPLATE PICKER ───────────────────────────────────────────────────
-function TplPicker({article,onConfirm,onCancel,artType,setArtType,client}){
+function TplPicker({article,onConfirm,onCanva,onCancel,artType,setArtType,client}){
     const [localTpl,setLocalTpl] = useState(null);
     const feeds = client?.templates?.feeds||[];
     const stories = client?.templates?.stories||[];
@@ -530,7 +542,7 @@ function TplPicker({article,onConfirm,onCancel,artType,setArtType,client}){
           {(feeds.length>0||stories.length>0)&&(
             <>
               <div style={S.label}>MODELO DO CLIENTE</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20,maxHeight:280,overflowY:"auto"}}>
                 {feeds.map(f=>(
                   <button key={f.id} onClick={()=>setLocalTpl({...f,type:"feed"})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`1px solid ${localTpl?.id===f.id?"#C8A96E":"#1e1e1e"}`,background:localTpl?.id===f.id?"#C8A96E11":"#0d0d0d",cursor:"pointer",textAlign:"left"}}>
                     <span>🖼️</span>
@@ -558,10 +570,9 @@ function TplPicker({article,onConfirm,onCancel,artType,setArtType,client}){
             </>
           )}
 
-          <div style={{display:"flex",gap:10}}>
-            <button style={S.btnPrimary} onClick={()=>{onConfirm(article,localTpl);}}>
-              ✨ Gerar Conteúdo
-            </button>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            <button style={{...S.btnPrimary,opacity:localTpl?.url?1:0.35}} disabled={!localTpl?.url} onClick={()=>onCanva(article,localTpl)}>🎨 Criar arte no Canva</button>
+            <button style={S.btnSec} onClick={()=>{onConfirm(article,localTpl);}}>✨ Só texto</button>
             <button style={S.btnCancel} onClick={onCancel}>Cancelar</button>
           </div>
         </div>
@@ -579,7 +590,7 @@ function ClientForm({initial,onSave,onCancel,allThemes,onAddTheme,notify}){
       stories: Array.isArray(t?.stories)?t.stories:[{id:"s1",label:"Stories 1",url:typeof t?.stories==="string"?t.stories:""}],
       modelo:t?.modelo||"",
     });
-    const [form,setForm] = useState(initial?{...initial,brandColors:initial.brandColors||["","",""],templates:normTpl(initial.templates)}:{name:"",niche:"",themes:[],brandColors:["","",""],templates:defTpl,color:CLIENT_COLORS[0]});
+    const [form,setForm] = useState(initial?{...initial,brandColors:initial.brandColors||["","",""],templates:normTpl(initial.templates)}:{name:"",niche:"",themes:[],brandColors:["","",""],templates:defTpl,color:CLIENT_COLORS[0],signature:"",artRules:""});
     const set=(k,v)=>setForm(p=>({...p,[k]:v}));
     const setTpl=(k,v)=>setForm(p=>({...p,templates:{...p.templates,[k]:v}}));
     const toggle=(id)=>set("themes",form.themes.includes(id)?form.themes.filter(t=>t!==id):[...form.themes,id]);
@@ -588,7 +599,7 @@ function ClientForm({initial,onSave,onCancel,allThemes,onAddTheme,notify}){
       if(id&&!allThemes.find(t=>t.id===id)){onAddTheme({id,label:customTheme,icon:"🔖",color:"#888"});toggle(id);setCustomTheme("");}
     };
     const addTplItem=(type)=>{
-      if((form.templates[type]||[]).length>=6)return;
+      if((form.templates[type]||[]).length>=15)return;
       const n=(form.templates[type]||[]).length+1;
       setTpl(type,[...(form.templates[type]||[]),{id:type[0]+Date.now(),label:`${type==="feeds"?"Feed":"Stories"} ${n}`,url:""}]);
     };
@@ -599,14 +610,15 @@ function ClientForm({initial,onSave,onCancel,allThemes,onAddTheme,notify}){
     const TplList=({type,icon,accent})=>(
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <div style={{fontSize:10,color:"#666",letterSpacing:1.5}}>{icon} {type==="feeds"?"FEED":"STORIES"} ({(form.templates[type]||[]).length}/6)</div>
-          {(form.templates[type]||[]).length<6&&<button onClick={()=>addTplItem(type)} style={{background:"none",border:`1px solid ${accent}44`,borderRadius:20,color:accent,fontSize:11,padding:"3px 10px",cursor:"pointer"}}>+ Adicionar</button>}
+          <div style={{fontSize:10,color:"#666",letterSpacing:1.5}}>{icon} {type==="feeds"?"FEED":"STORIES"} ({(form.templates[type]||[]).length}/15)</div>
+          {(form.templates[type]||[]).length<15&&<button onClick={()=>addTplItem(type)} style={{background:"none",border:`1px solid ${accent}44`,borderRadius:20,color:accent,fontSize:11,padding:"3px 10px",cursor:"pointer"}}>+ Adicionar</button>}
         </div>
         {(form.templates[type]||[]).map((item,i)=>(
           <div key={item.id} style={{display:"flex",gap:6,marginBottom:8}}>
             <div style={{flex:1}}>
               <input style={{...S.input,marginBottom:4,fontSize:12,padding:"7px 10px"}} value={item.label} onChange={e=>updTplItem(type,item.id,"label",e.target.value)} placeholder={`Nome do modelo ${i+1}`}/>
               <input style={{...S.input,marginBottom:0,fontSize:11,padding:"7px 10px",fontFamily:"monospace"}} value={item.url} onChange={e=>updTplItem(type,item.id,"url",e.target.value)} placeholder="https://www.canva.com/design/DAxxxxxx/..."/>
+              <textarea rows={2} style={{...S.input,marginTop:4,marginBottom:0,fontSize:11,padding:"7px 10px",resize:"vertical"}} value={item.notes||""} onChange={e=>updTplItem(type,item.id,"notes",e.target.value)} placeholder="Mapa/regras deste modelo (opcional): ex. título máx 20 caracteres, corpo máx 99, não editar logo e rodapé"/>
             </div>
             {(form.templates[type]||[]).length>1&&<button onClick={()=>removeTplItem(type,item.id)} style={{background:"none",border:"none",color:"#444",fontSize:15,cursor:"pointer",padding:"4px"}}>✕</button>}
           </div>
@@ -657,6 +669,10 @@ function ClientForm({initial,onSave,onCancel,allThemes,onAddTheme,notify}){
             <TplList type="stories" icon="📱" accent="#a855f7"/>
             <label style={{...S.label,marginTop:4}}>📁 Modelo / Padrão Visual</label>
             <input style={S.input} value={form.templates.modelo||""} onChange={e=>setTpl("modelo",e.target.value)} placeholder="Link de referência (Canva, Drive...)"/>
+            <label style={S.label}>✍️ Assinatura no final da legenda</label>
+            <input style={S.input} value={form.signature||""} onChange={e=>set("signature",e.target.value)} placeholder="Ex: 🎯 Grupo Marketing 2.0 @marketing2ponto0"/>
+            <label style={S.label}>📌 Regras gerais das artes deste cliente</label>
+            <textarea rows={3} style={{...S.input,resize:"vertical"}} value={form.artRules||""} onChange={e=>set("artRules",e.target.value)} placeholder="Ex: tom de voz, palavras proibidas, itens que nunca mudam (logo, telefone, endereço)..."/>
           </div>
           <div style={{display:"flex",gap:12}}>
             <button style={S.btnPrimary} onClick={()=>{if(form.name)onSave(form);else notify("Informe o nome","error");}}>Salvar</button>
@@ -667,6 +683,69 @@ function ClientForm({initial,onSave,onCancel,allThemes,onAddTheme,notify}){
     );
 }
 
+
+export function buildCanvaPrompt({client,tpl,article,artType,generated,themeLabel}){
+  const data=new Date().toLocaleDateString("pt-BR");
+  const cores=(client?.brandColors||[]).filter(Boolean).join(", ");
+  const L=[];
+  L.push("Crie a arte no Canva a partir desta notícia, seguindo o fluxo abaixo. Execute tudo automaticamente, sem pedir confirmação.");
+  L.push("");
+  L.push("CLIENTE: "+(client?.name||"")+(client?.niche?" ("+client.niche+")":""));
+  L.push("TIPO DE ARTE: "+(artType==="carrossel"?"Carrossel":"Arte simples"));
+  L.push("MODELO: "+(tpl?.label||"")+" — "+(tpl?.url||""));
+  if(cores) L.push("CORES DA MARCA (já presentes no modelo, não alterar): "+cores);
+  if(themeLabel) L.push("TEMA: "+themeLabel);
+  L.push("");
+  L.push("NOTÍCIA");
+  L.push("Título: "+article.title);
+  if(article.summary) L.push("Resumo: "+article.summary);
+  L.push("Fonte: "+(article.source||"")+(article.time?" · "+article.time:""));
+  if(article.url&&article.url!=="#") L.push("Link: "+article.url);
+  if(generated){
+    L.push("");
+    L.push("TEXTOS JÁ GERADOS (use como base e ajuste ao limite de cada campo):");
+    if(generated.headline) L.push("Headline: "+generated.headline);
+    if(generated.slides) generated.slides.forEach((sl,i)=>L.push("Slide "+(i+1)+": "+sl.titulo+" — "+sl.texto));
+    if(generated.caption) L.push("Legenda: "+generated.caption);
+    if(generated.hashtags) L.push("Hashtags: "+generated.hashtags);
+    if(generated.cta) L.push("CTA: "+generated.cta);
+  }
+  L.push("");
+  L.push("FLUXO OBRIGATÓRIO");
+  L.push("1. Se o link for canva.link, resolva com resolve-shortlink. Leia a estrutura do design (read-design) e MAPEIE os elementos: identifique cada texto (etiqueta, título, corpo, local, assinatura), imagens e elementos fixos.");
+  L.push("2. Faça copy-design do modelo. Nunca edite o original e nunca use generate-design.");
+  L.push("3. Abra a cópia para edição (start-editing-transaction).");
+  L.push("4. Em UMA única chamada de perform-editing-operations: update_title + todos os replace_text. Troque SOMENTE o conteúdo dos textos variáveis. Mantenha fonte, tamanho, cor, alinhamento, quebras de linha, posição e todos os elementos fixos (logo, nome da marca, assinatura, contatos, rodapé). Respeite o limite de caracteres que cada campo comporta no modelo; se precisar, encurte o texto para não estourar.");
+  L.push("5. Finalize com commit-editing-transaction.");
+  L.push("6. Entregue o link da arte e a legenda do Instagram pronta para copiar.");
+  if(artType==="carrossel") L.push("Carrossel: capa + 3 a 5 slides de conteúdo + fechamento, reaproveitando as páginas do modelo (duplique a página do modelo quando precisar de mais slides).");
+  L.push("");
+  L.push("REGRAS DE TEXTO");
+  L.push("- Local: apenas o nome da cidade, sem sigla do estado.");
+  L.push('- update_title no formato "[Assunto] - [Cidade] - '+data+'".');
+  L.push("- Preserve sempre a acentuação do português.");
+  if(client?.signature) L.push("- A legenda do Instagram termina exatamente com: "+client.signature);
+  if(tpl?.notes) L.push("REGRAS DESTE MODELO: "+tpl.notes);
+  if(client?.artRules) L.push("REGRAS GERAIS DO CLIENTE: "+client.artRules);
+  return L.join("\n");
+}
+
+function PromptModal({text,onClose,notify}){
+  return (
+    <div style={S.overlay}>
+      <div style={{...S.formCard,maxWidth:420}}>
+        <div style={S.formTitle}>📋 Pedido da arte</div>
+        <div style={{fontSize:12,color:"#777",marginBottom:10,lineHeight:1.5}}>Não consegui copiar automaticamente. Copie o texto abaixo e cole no Claude.</div>
+        <textarea readOnly rows={12} value={text} onFocus={e=>e.target.select()} style={{...S.input,fontSize:11,fontFamily:"monospace"}}/>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          <button style={S.btnPrimary} onClick={()=>{try{navigator.clipboard.writeText(text);notify("📋 Copiado!");}catch{}}}>Copiar</button>
+          <a href="https://claude.ai/new" target="_blank" rel="noreferrer" style={{...S.btnSec,textDecoration:"none"}}>Abrir Claude</a>
+          <button style={S.btnCancel} onClick={onClose}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const S = {
   root:{background:"#080808",minHeight:"100vh",maxWidth:480,margin:"0 auto",fontFamily:"'DM Sans',sans-serif",color:"#fff",paddingBottom:80},
