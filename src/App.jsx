@@ -242,7 +242,7 @@ export default function App() {
   const HomeView = ()=>(
     <div style={S.page}>
       <div style={S.header}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}><img src="/icons/logo.png" alt="M2.0" width="42" height="42" style={{borderRadius:10,display:"block"}}/><div><div style={{...S.logo,fontSize:18}}>Agente Social Media <span style={{color:"#C8A96E"}}>2.0</span></div><div style={S.logoSub}>MARKETING 2.0</div></div></div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}><img src="/icons/logo.png" alt="M2.0" width="42" height="42" style={{borderRadius:10,display:"block"}}/><div style={{fontFamily:"'Montserrat',sans-serif",fontWeight:800,fontSize:15,letterSpacing:.3,whiteSpace:"nowrap"}}>Social Media <span style={{color:"#C8A96E"}}>2.0</span></div></div>
         {apiOk===false&&<div style={{fontSize:11,color:"#f97316",background:"#f9731611",border:"1px solid #f9731633",borderRadius:20,padding:"4px 10px"}}>⚠️ Sem Groq Key</div>}
       </div>
       {clients.length===0?(
@@ -518,7 +518,7 @@ export default function App() {
 
   return (
     <div style={S.root}>
-      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&family=Montserrat:wght@800&display=swap" rel="stylesheet"/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box} input:focus{outline:none;border-color:#C8A96E!important} input[type=color]{-webkit-appearance:none} ::-webkit-scrollbar{height:3px;background:#111} ::-webkit-scrollbar-thumb{background:#222}`}</style>
       {notification&&(
         <div style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,background:notification.type==="error"?"#1a0808":"#111",border:`1px solid ${notification.type==="error"?"#ef444466":"#C8A96E55"}`,color:notification.type==="error"?"#ef4444":"#C8A96E",fontSize:13,whiteSpace:"nowrap",boxShadow:"0 4px 20px #00000088"}}>
