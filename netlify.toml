@@ -8,6 +8,9 @@
 [functions]
   directory = "netlify/functions"
 
+[functions."ingest-cron"]
+  schedule = "@hourly"
+
 [[redirects]]
   from = "/api/claude"
   to = "/.netlify/functions/claude"
