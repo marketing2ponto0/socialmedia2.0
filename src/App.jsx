@@ -59,6 +59,7 @@ export default function App() {
   const [promptModal,setPromptModal] = useState(null);
   const [showTplPicker,setShowTplPicker] = useState(false);
   const [pendingArticle,setPendingArticle] = useState(null);
+  const [freeText,setFreeText] = useState("");
   const [apiOk,setApiOk] = useState(null);
 
   const activeClient = clients.find(c=>c.id===activeClientId);
@@ -113,20 +114,22 @@ export default function App() {
   const doGenerate = async(article,tpl)=>{
     setSelectedTpl(tpl); setShowTplPicker(false); setGenLoading(true); setGenerated(null);
     try {
-      const theme = allThemes.find(t=>t.id===activeTheme)||{label:activeTheme};
+      const theme = allThemes.find(t=>t.id===activeTheme)||{label:"tema livre"};
       const isCarrossel = artType==="carrossel";
       const colorHint = (activeClient?.brandColors||[]).filter(Boolean).join(", ");
       const system = isCarrossel
         ? `Você é especialista em Social Media para "${activeClient?.name}" (${activeClient?.niche||theme.label}). ${colorHint?"Cores da marca: "+colorHint+".":""} Crie um CARROSSEL para Instagram. Responda SOMENTE JSON: {"headline":"max 8 palavras","slides":[{"titulo":"","texto":""},{"titulo":"","texto":""},{"titulo":"","texto":""}],"caption":"legenda com emojis max 250 chars","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5","cta":"call to action"}`
         : `Você é especialista em Social Media para "${activeClient?.name}" (${activeClient?.niche||theme.label}). ${colorHint?"Cores da marca: "+colorHint+".":""} Crie post SIMPLES para Instagram. Responda SOMENTE JSON: {"headline":"max 8 palavras","caption":"legenda com emojis max 280 chars","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5","cta":"call to action"}`;
-      const messages = [{role:"user",content:`Notícia: "${article.title}"\nResumo: "${article.summary}"\nCrie o conteúdo.`}];
-      const body = {model:"llama-3.3-70b-versatile",max_tokens:1000,system,messages};
+      const freeNote = article.free ? " O social media NÃO tem notícia: ele informou um tema ou texto-base. Use-o para criar conteúdo ORIGINAL e útil (o headline é o tema da arte). Não invente estatísticas, estudos, preços nem dados específicos." : "";
+      const sys2 = system+freeNote;
+      const messages = [{role:"user",content: article.free ? `Tema/texto-base: "${article.summary}"\nCrie o conteúdo.` : `Notícia: "${article.title}"\nResumo: "${article.summary}"\nCrie o conteúdo.`}];
+      const body = {model:"llama-3.3-70b-versatile",max_tokens:1000,system:sys2,messages};
       const data = await callClaude(body);
       const textBlocks = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
       const jsonMatch = textBlocks.match(/\{[\s\S]*\}/);
       let postData={};
       if(jsonMatch){ try{postData=JSON.parse(jsonMatch[0].replace(/```json|```/g,"").trim());}catch{} }
-      setGenerated({...postData,canvaLink:null,artType,tplLabel:tpl?.label,article});
+      setGenerated({...postData,canvaLink:null,artType,tplLabel:tpl?.label,article:article.free?{...article,title:postData.headline||article.title}:article});
       notify("✨ Conteúdo gerado!");
     } catch(e){ notify("Erro: "+e.message,"error"); }
     setGenLoading(false);
@@ -326,6 +329,9 @@ export default function App() {
             </div>
           )}
         </div>
+        <div style={{padding:"0 16px 14px"}}>
+          <button onClick={()=>{setGenerated(null);setView("free");}} style={{width:"100%",background:"#C8A96E15",border:"1px solid #C8A96E55",color:"#C8A96E",borderRadius:12,padding:14,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'Syne',sans-serif"}}>✍️ Criar com tema livre (sem notícia)</button>
+        </div>
         <div style={S.sectionTitle}>TEMAS DO CLIENTE</div>
         {clientThemes.length===0?(
           <div style={{padding:"0 16px",color:"#555",fontSize:13}}>
@@ -343,6 +349,32 @@ export default function App() {
             ))}
           </div>
         )}
+      </div>
+    );
+  };
+
+  const FreeView = ()=>{
+    if(!activeClient) return null;
+    const go=()=>{
+      const t=freeText.trim(); if(t.length<3){ notify("Escreva um tema ou texto","error"); return; }
+      const title=t.split(/\n|\./)[0].slice(0,90);
+      handleGenerateClick({id:"free-"+Date.now(),title,summary:t,source:"Tema livre",time:"",url:"#",free:true});
+    };
+    return (
+      <div style={S.page}>
+        <div style={S.header}>
+          <button onClick={()=>setView("client")} style={S.backBtn}>← {activeClient.name}</button>
+        </div>
+        <ClientTabs/>
+        <div style={{padding:"16px"}}>
+          <div style={{fontSize:18,fontWeight:700,fontFamily:"'Syne',sans-serif",marginBottom:4}}>✍️ Criar com tema livre</div>
+          <div style={{fontSize:12,color:"#555",marginBottom:12,lineHeight:1.5}}>Sem depender de notícia: escreva um tema ou cole um trecho de texto e a IA cria o tema da arte, a legenda e as hashtags.</div>
+          <textarea value={freeText} onChange={e=>setFreeText(e.target.value)} rows={6}
+            placeholder={"Ex.: Dicas para proteger os olhos do sol no verão\n\nou cole aqui um trecho de texto, ideia, promoção, data comemorativa..."}
+            style={{width:"100%",background:"#111",border:"1px solid #222",borderRadius:10,color:"#fff",padding:12,fontSize:14,fontFamily:"'DM Sans',sans-serif",resize:"vertical"}}/>
+          <button onClick={go} disabled={genLoading} style={{width:"100%",marginTop:10,background:"#C8A96E",color:"#000",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:700,cursor:"pointer",opacity:genLoading?.6:1}}>✨ Escolher modelo e criar</button>
+          <div style={{marginTop:14}}><GeneratedPanel theme={null}/></div>
+        </div>
       </div>
     );
   };
@@ -497,6 +529,7 @@ export default function App() {
       {view==="client"&&ClientView()}
       {view==="content"&&ContentView()}
       {view==="allcontent"&&AllContentView()}
+      {view==="free"&&FreeView()}
       {view==="settings"&&SettingsView()}
       {(view==="add-client"||view==="edit-client")&&<ClientForm initial={editingClient} allThemes={allThemes} onAddTheme={addTheme} notify={notify} onSave={saveClient} onCancel={()=>{setView(editingClient?"client":"home");setEditingClient(null);}}/>}
       {showTplPicker&&pendingArticle&&<TplPicker article={pendingArticle} artType={artType} setArtType={setArtType} client={activeClient} onConfirm={doGenerate} onCanva={doCanva} onCancel={()=>setShowTplPicker(false)}/>}
