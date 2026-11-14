@@ -239,7 +239,7 @@ export default function App() {
   const HomeView = ()=>(
     <div style={S.page}>
       <div style={S.header}>
-        <div><div style={S.logo}>M<span style={{color:"#C8A96E"}}>2</span>.0</div><div style={S.logoSub}>AGENTE SOCIAL MEDIA</div></div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}><img src="/icons/logo.png" alt="M2.0" width="38" height="38" style={{borderRadius:10,display:"block"}}/><div><div style={S.logo}>M<span style={{color:"#C8A96E"}}>2</span>.0</div><div style={S.logoSub}>AGENTE SOCIAL MEDIA</div></div></div>
         {apiOk===false&&<div style={{fontSize:11,color:"#f97316",background:"#f9731611",border:"1px solid #f9731633",borderRadius:20,padding:"4px 10px"}}>⚠️ Sem Groq Key</div>}
       </div>
       {clients.length===0?(
