@@ -93,7 +93,7 @@ export default function App() {
 
   // carrega notícias ao abrir a tela de tema / de todos os conteúdos
   useEffect(()=>{
-    if(view==="content"&&activeTheme) loadTheme(activeTheme);
+    if((view==="content"||view==="news")&&activeTheme) loadTheme(activeTheme);
     if(view==="allcontent"&&activeClient) (activeClient.themes||[]).forEach(id=>loadTheme(id));
   // eslint-disable-next-line
   },[view,activeTheme,activeClientId]);
@@ -118,8 +118,8 @@ export default function App() {
       const isCarrossel = artType==="carrossel";
       const colorHint = (activeClient?.brandColors||[]).filter(Boolean).join(", ");
       const system = isCarrossel
-        ? `Você é especialista em Social Media para "${activeClient?.name}" (${activeClient?.niche||theme.label}). ${colorHint?"Cores da marca: "+colorHint+".":""} Crie um CARROSSEL para Instagram. Responda SOMENTE JSON: {"headline":"max 8 palavras","slides":[{"titulo":"","texto":""},{"titulo":"","texto":""},{"titulo":"","texto":""}],"caption":"legenda com emojis max 250 chars","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5","cta":"call to action"}`
-        : `Você é especialista em Social Media para "${activeClient?.name}" (${activeClient?.niche||theme.label}). ${colorHint?"Cores da marca: "+colorHint+".":""} Crie post SIMPLES para Instagram. Responda SOMENTE JSON: {"headline":"max 8 palavras","caption":"legenda com emojis max 280 chars","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5","cta":"call to action"}`;
+        ? `Você é especialista em Social Media para "${activeClient?.name||"o cliente"}" (${activeClient?.niche||theme.label}). ${colorHint?"Cores da marca: "+colorHint+".":""} Crie um CARROSSEL para Instagram. Responda SOMENTE JSON: {"headline":"max 8 palavras","slides":[{"titulo":"","texto":""},{"titulo":"","texto":""},{"titulo":"","texto":""}],"caption":"legenda com emojis max 250 chars","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5","cta":"call to action"}`
+        : `Você é especialista em Social Media para "${activeClient?.name||"o cliente"}" (${activeClient?.niche||theme.label}). ${colorHint?"Cores da marca: "+colorHint+".":""} Crie post SIMPLES para Instagram. Responda SOMENTE JSON: {"headline":"max 8 palavras","caption":"legenda com emojis max 280 chars","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5","cta":"call to action"}`;
       const freeNote = article.free ? " O social media NÃO tem notícia: ele informou um tema ou texto-base. Use-o para criar conteúdo ORIGINAL e útil (o headline é o tema da arte). Não invente estatísticas, estudos, preços nem dados específicos." : "";
       const sys2 = system+freeNote;
       const messages = [{role:"user",content: article.free ? `Tema/texto-base: "${article.summary}"\nCrie o conteúdo.` : `Notícia: "${article.title}"\nResumo: "${article.summary}"\nCrie o conteúdo.`}];
@@ -147,7 +147,7 @@ export default function App() {
     <div style={{borderBottom:"1px solid #111",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
       <div style={{display:"flex",minWidth:"max-content",padding:"0 12px"}}>
         {clients.map(c=>(
-          <button key={c.id} style={{background:"none",border:"none",borderBottom:`2px solid ${activeClientId===c.id?c.color:"transparent"}`,padding:"8px 12px",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",color:activeClientId===c.id?"#fff":"#444",fontFamily:"'DM Sans',sans-serif"}}
+          <button key={c.id} style={{background:"none",border:"none",borderBottom:`2px solid ${activeClientId===c.id?c.color:"transparent"}`,padding:"8px 12px",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",color:activeClientId===c.id?"#fff":"#444",fontFamily:"'Montserrat',sans-serif"}}
             onClick={()=>{setActiveClientId(c.id);setActiveTheme(null);setGenerated(null);setView("client");}}>
             <span style={{width:6,height:6,borderRadius:"50%",background:c.color,flexShrink:0}}/>
             {c.name}
@@ -172,7 +172,7 @@ export default function App() {
     if(!generated) return null;
     return (
       <div style={S.genPanel}>
-        <div style={{fontSize:13,fontWeight:700,color:"#C8A96E",marginBottom:4,fontFamily:"'Syne',sans-serif"}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#C8A96E",marginBottom:4,fontFamily:"'Montserrat',sans-serif"}}>
           {generated.artType==="carrossel"?"📚 Carrossel":"🖼️ Arte Simples"} · {activeClient?.name}
         </div>
         {generated.tplLabel&&<div style={{fontSize:11,color:"#555",marginBottom:14}}>Modelo: {generated.tplLabel}</div>}
@@ -229,7 +229,7 @@ export default function App() {
         <span style={{fontSize:10,color:themeObj.color,fontWeight:600}}>{article.source}</span>
         <span style={{fontSize:10,color:"#333"}}>{article.time}</span>
       </div>
-      <div style={{fontSize:14,fontWeight:600,color:"#fff",fontFamily:"'Syne',sans-serif",lineHeight:1.4,marginBottom:5}}>{article.title}</div>
+      <div style={{fontSize:14,fontWeight:600,color:"#fff",fontFamily:"'Montserrat',sans-serif",lineHeight:1.4,marginBottom:5}}>{article.title}</div>
       <div style={{fontSize:12,color:"#555",lineHeight:1.5,marginBottom:10}}>{article.summary}</div>
       <button style={{padding:"7px 16px",borderRadius:20,border:`1px solid ${themeObj.color}44`,background:themeObj.color+"1a",color:themeObj.color,fontSize:12,cursor:"pointer",fontWeight:600}}
         onClick={()=>handleGenerateClick(article)}>
@@ -264,7 +264,7 @@ export default function App() {
                     <div key={i} style={{width:12,height:12,borderRadius:3,background:col,border:"1px solid #333"}}/>
                   ))}
                 </div>
-                <div style={{fontSize:14,fontWeight:700,fontFamily:"'Syne',sans-serif",color:"#fff",marginBottom:2}}>{c.name}</div>
+                <div style={{fontSize:14,fontWeight:700,fontFamily:"'Montserrat',sans-serif",color:"#fff",marginBottom:2}}>{c.name}</div>
                 <div style={{fontSize:11,color:"#555"}}>{c.niche}</div>
                 <div style={{fontSize:10,color:"#333",marginTop:4}}>{(c.themes||[]).length} temas</div>
               </div>
@@ -297,7 +297,7 @@ export default function App() {
         <div style={{padding:"12px 16px 14px"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
             <div style={{width:10,height:10,borderRadius:"50%",background:activeClient.color}}/>
-            <div style={{fontSize:20,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>{activeClient.name}</div>
+            <div style={{fontSize:20,fontWeight:700,fontFamily:"'Montserrat',sans-serif"}}>{activeClient.name}</div>
           </div>
           <div style={{color:"#555",fontSize:13,marginBottom:10}}>{activeClient.niche}</div>
           {(activeClient.brandColors||[]).filter(Boolean).length>0&&(
@@ -330,7 +330,7 @@ export default function App() {
           )}
         </div>
         <div style={{padding:"0 16px 14px"}}>
-          <button onClick={()=>{setGenerated(null);setView("free");}} style={{width:"100%",background:"#C8A96E15",border:"1px solid #C8A96E55",color:"#C8A96E",borderRadius:12,padding:14,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'Syne',sans-serif"}}>✍️ Criar com tema livre (sem notícia)</button>
+          <button onClick={()=>{setGenerated(null);setView("free");}} style={{width:"100%",background:"#C8A96E15",border:"1px solid #C8A96E55",color:"#C8A96E",borderRadius:12,padding:14,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'Montserrat',sans-serif"}}>✍️ Criar com tema livre (sem notícia)</button>
         </div>
         <div style={S.sectionTitle}>TEMAS DO CLIENTE</div>
         {clientThemes.length===0?(
@@ -343,7 +343,7 @@ export default function App() {
               <div key={t.id} style={{background:"#111",border:`1px solid ${t.color}33`,borderRadius:12,padding:14,cursor:"pointer",textAlign:"center"}}
                 onClick={()=>{setActiveTheme(t.id);loadTheme(t.id);setGenerated(null);setView("content");}}>
                 <div style={{fontSize:26,marginBottom:6}}>{t.icon}</div>
-                <div style={{fontSize:12,fontWeight:600,color:t.color,fontFamily:"'Syne',sans-serif"}}>{t.label}</div>
+                <div style={{fontSize:12,fontWeight:600,color:t.color,fontFamily:"'Montserrat',sans-serif"}}>{t.label}</div>
                 <div style={{fontSize:10,color:"#333",marginTop:3}}>{loadingTheme[t.id]?"↻ buscando...":newsMap[t.id]?newsMap[t.id].length+" artigos":"Toque para carregar"}</div>
               </div>
             ))}
@@ -367,14 +367,59 @@ export default function App() {
         </div>
         <ClientTabs/>
         <div style={{padding:"16px"}}>
-          <div style={{fontSize:18,fontWeight:700,fontFamily:"'Syne',sans-serif",marginBottom:4}}>✍️ Criar com tema livre</div>
+          <div style={{fontSize:18,fontWeight:700,fontFamily:"'Montserrat',sans-serif",marginBottom:4}}>✍️ Criar com tema livre</div>
           <div style={{fontSize:12,color:"#555",marginBottom:12,lineHeight:1.5}}>Sem depender de notícia: escreva um tema ou cole um trecho de texto e a IA cria o tema da arte, a legenda e as hashtags.</div>
           <textarea value={freeText} onChange={e=>setFreeText(e.target.value)} rows={6}
             placeholder={"Ex.: Dicas para proteger os olhos do sol no verão\n\nou cole aqui um trecho de texto, ideia, promoção, data comemorativa..."}
-            style={{width:"100%",background:"#111",border:"1px solid #222",borderRadius:10,color:"#fff",padding:12,fontSize:14,fontFamily:"'DM Sans',sans-serif",resize:"vertical"}}/>
+            style={{width:"100%",background:"#111",border:"1px solid #222",borderRadius:10,color:"#fff",padding:12,fontSize:14,fontFamily:"'Montserrat',sans-serif",resize:"vertical"}}/>
           <button onClick={go} disabled={genLoading} style={{width:"100%",marginTop:10,background:"#C8A96E",color:"#000",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:700,cursor:"pointer",opacity:genLoading?.6:1}}>✨ Escolher modelo e criar</button>
           <div style={{marginTop:14}}><GeneratedPanel theme={null}/></div>
         </div>
+      </div>
+    );
+  };
+
+  const NewsView = ()=>{
+    const cur = activeTheme||allThemes[0]?.id;
+    const themeObj = allThemes.find(t=>t.id===cur)||{label:cur,icon:"🔖",color:"#C8A96E"};
+    const articles = newsMap[cur]||[];
+    return (
+      <div style={S.page}>
+        <div style={S.header}>
+          <div style={{fontSize:16,fontWeight:800,fontFamily:"'Montserrat',sans-serif"}}>🗞️ Notícias por tema</div>
+          <button onClick={()=>refreshTheme(cur)} style={S.iconBtn}>🔄</button>
+        </div>
+        <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",borderBottom:"1px solid #111"}}>
+          <div style={{display:"flex",gap:8,padding:"10px 16px",minWidth:"max-content"}}>
+            {allThemes.map(t=>(
+              <button key={t.id} onClick={()=>{setActiveTheme(t.id);loadTheme(t.id);setGenerated(null);}}
+                style={{whiteSpace:"nowrap",padding:"7px 12px",borderRadius:20,cursor:"pointer",fontSize:12,fontFamily:"'Montserrat',sans-serif",border:`1px solid ${cur===t.id?t.color:t.color+"33"}`,background:cur===t.id?t.color+"22":"transparent",color:cur===t.id?t.color:"#666"}}>
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{padding:"12px 16px"}}>
+          <div style={{fontSize:17,fontWeight:700,color:themeObj.color}}>{themeObj.icon} {themeObj.label}</div>
+          <div style={{fontSize:11,color:"#444"}}>{articles.length} artigos · mais recentes primeiro{activeClient?" · arte para "+activeClient.name:""}</div>
+        </div>
+        {loadingTheme[cur]&&(
+          <div style={{display:"flex",alignItems:"center",gap:12,padding:"30px",justifyContent:"center"}}>
+            <div style={S.spinner}/><span style={{color:"#555",fontSize:13}}>Buscando artigos...</span>
+          </div>
+        )}
+        {!loadingTheme[cur]&&articles.length===0&&(
+          <div style={{textAlign:"center",padding:"40px 20px"}}>
+            <div style={{fontSize:40,marginBottom:12}}>📭</div>
+            <div style={{color:"#555",marginBottom:16,fontSize:13}}>Sem artigos no momento.</div>
+            <button style={S.btnPrimary} onClick={()=>refreshTheme(cur)}>Tentar novamente</button>
+          </div>
+        )}
+        <div style={{display:"flex",flexDirection:"column",gap:10,padding:"0 16px"}}>
+          {articles.map(a=><ArticleCard key={a.id} article={a} themeObj={themeObj}/>)}
+        </div>
+        <div style={{padding:"12px 16px 0"}}><GeneratedPanel theme={cur}/></div>
+        <div style={{height:24}}/>
       </div>
     );
   };
@@ -399,7 +444,7 @@ export default function App() {
         <ClientTabs/>
         <div style={{padding:"8px 16px 12px"}}>
           <div style={{fontSize:24,marginBottom:4}}>{themeObj.icon}</div>
-          <div style={{fontSize:17,fontWeight:700,color:themeObj.color,fontFamily:"'Syne',sans-serif"}}>{themeObj.label}</div>
+          <div style={{fontSize:17,fontWeight:700,color:themeObj.color,fontFamily:"'Montserrat',sans-serif"}}>{themeObj.label}</div>
           <div style={{fontSize:11,color:"#444"}}>{activeClient?.name} · {articles.length} artigos · mais recentes primeiro</div>
         </div>
         {loadingTheme[activeTheme]&&(
@@ -432,7 +477,7 @@ export default function App() {
       <div style={S.page}>
         <div style={S.header}>
           <div>
-            <div style={{fontSize:16,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>📰 Todos os Conteúdos</div>
+            <div style={{fontSize:16,fontWeight:700,fontFamily:"'Montserrat',sans-serif"}}>📰 Todos os Conteúdos</div>
             <div style={{fontSize:11,color:"#555"}}>{activeClient.name} · {total} artigos</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -461,7 +506,7 @@ export default function App() {
                     onClick={()=>{setActiveTheme(t.id);setView("content");}}>
                     <span style={{fontSize:18}}>{t.icon}</span>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:13,fontWeight:600,color:t.color,fontFamily:"'Syne',sans-serif"}}>{t.label}</div>
+                      <div style={{fontSize:13,fontWeight:600,color:t.color,fontFamily:"'Montserrat',sans-serif"}}>{t.label}</div>
                       <div style={{fontSize:10,color:"#444"}}>{loading?"buscando...":articles.length+" artigos"}</div>
                     </div>
                     <span style={{fontSize:11,color:"#333"}}>Ver todos →</span>
@@ -518,7 +563,7 @@ export default function App() {
 
   return (
     <div style={S.root}>
-      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&family=Montserrat:wght@800&display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box} input:focus{outline:none;border-color:#C8A96E!important} input[type=color]{-webkit-appearance:none} ::-webkit-scrollbar{height:3px;background:#111} ::-webkit-scrollbar-thumb{background:#222}`}</style>
       {notification&&(
         <div style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,background:notification.type==="error"?"#1a0808":"#111",border:`1px solid ${notification.type==="error"?"#ef444466":"#C8A96E55"}`,color:notification.type==="error"?"#ef4444":"#C8A96E",fontSize:13,whiteSpace:"nowrap",boxShadow:"0 4px 20px #00000088"}}>
@@ -530,14 +575,18 @@ export default function App() {
       {view==="content"&&ContentView()}
       {view==="allcontent"&&AllContentView()}
       {view==="free"&&FreeView()}
+      {view==="news"&&NewsView()}
       {view==="settings"&&SettingsView()}
       {(view==="add-client"||view==="edit-client")&&<ClientForm initial={editingClient} allThemes={allThemes} onAddTheme={addTheme} notify={notify} onSave={saveClient} onCancel={()=>{setView(editingClient?"client":"home");setEditingClient(null);}}/>}
       {showTplPicker&&pendingArticle&&<TplPicker article={pendingArticle} artType={artType} setArtType={setArtType} client={activeClient} onConfirm={doGenerate} onCanva={doCanva} onCancel={()=>setShowTplPicker(false)}/>}
       {promptModal&&<PromptModal text={promptModal} onClose={()=>setPromptModal(null)} notify={notify}/>}
-      {["home","client","content","allcontent","settings"].includes(view)&&(
+      {["home","news","client","content","allcontent","settings"].includes(view)&&(
         <nav style={S.nav}>
           <button style={{...S.navBtn,color:view==="home"?"#C8A96E":"#444"}} onClick={()=>setView("home")}>
             <span style={{fontSize:20}}>🏠</span><span style={{fontSize:9,letterSpacing:1}}>INÍCIO</span>
+          </button>
+          <button style={{...S.navBtn,color:view==="news"?"#C8A96E":"#444"}} onClick={()=>{if(!activeTheme)setActiveTheme(allThemes[0]?.id);loadTheme(activeTheme||allThemes[0]?.id);setView("news");setGenerated(null);}}>
+            <span style={{fontSize:20}}>🗞️</span><span style={{fontSize:9,letterSpacing:1}}>NOTÍCIAS</span>
           </button>
           <button style={{...S.navBtn,color:view==="client"?"#C8A96E":"#444"}} onClick={()=>{setView("client");setGenerated(null);}}>
             <span style={{fontSize:20}}>🏢</span><span style={{fontSize:9,letterSpacing:1}}>EMPRESA</span>
@@ -781,10 +830,10 @@ function PromptModal({text,onClose,notify}){
 }
 
 const S = {
-  root:{background:"#080808",minHeight:"100vh",maxWidth:480,margin:"0 auto",fontFamily:"'DM Sans',sans-serif",color:"#fff",paddingBottom:80},
+  root:{background:"#080808",minHeight:"100vh",maxWidth:480,margin:"0 auto",fontFamily:"'Montserrat',sans-serif",color:"#fff",paddingBottom:80},
   page:{paddingTop:8},
   header:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px 10px"},
-  logo:{fontSize:22,fontWeight:800,fontFamily:"'Syne',sans-serif"},
+  logo:{fontSize:22,fontWeight:800,fontFamily:"'Montserrat',sans-serif"},
   logoSub:{fontSize:9,color:"#C8A96E",letterSpacing:3,marginTop:2},
   backBtn:{background:"none",border:"none",color:"#C8A96E",fontSize:13,cursor:"pointer",padding:0},
   iconBtn:{background:"none",border:"none",color:"#555",fontSize:18,cursor:"pointer",padding:4},
@@ -792,14 +841,14 @@ const S = {
   tplLink:{flex:1,minWidth:0,display:"block",textAlign:"center",padding:"7px 10px",background:"#C8A96E11",border:"1px solid #C8A96E33",borderRadius:8,color:"#C8A96E",fontSize:11,textDecoration:"none",fontWeight:600},
   chip:{padding:"5px 10px",borderRadius:20,fontSize:11,cursor:"pointer"},
   label:{display:"block",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#3a3a3a",marginBottom:6},
-  input:{width:"100%",background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:10,padding:"11px 13px",color:"#fff",fontSize:13,marginBottom:14,fontFamily:"'DM Sans',sans-serif"},
+  input:{width:"100%",background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:10,padding:"11px 13px",color:"#fff",fontSize:13,marginBottom:14,fontFamily:"'Montserrat',sans-serif"},
   btnPrimary:{background:"#C8A96E",color:"#000",border:"none",borderRadius:20,padding:"12px 22px",fontSize:13,fontWeight:700,cursor:"pointer"},
   btnSec:{background:"#1a1a1a",color:"#C8A96E",border:"1px solid #C8A96E33",borderRadius:20,padding:"11px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"},
   btnCancel:{background:"#111",color:"#555",border:"1px solid #1e1e1e",borderRadius:20,padding:"9px 16px",fontSize:12,cursor:"pointer"},
   btnCopy:{background:"#1a1a1a",color:"#C8A96E",border:"1px solid #C8A96E33",borderRadius:20,padding:"9px 14px",fontSize:12,cursor:"pointer"},
   overlay:{position:"fixed",inset:0,background:"#000000dd",zIndex:100,overflowY:"auto",padding:"20px 16px"},
   formCard:{background:"#111",border:"1px solid #1e1e1e",borderRadius:20,padding:22,maxWidth:440,margin:"0 auto"},
-  formTitle:{fontSize:16,fontWeight:700,fontFamily:"'Syne',sans-serif",color:"#C8A96E",marginBottom:18,marginTop:0},
+  formTitle:{fontSize:16,fontWeight:700,fontFamily:"'Montserrat',sans-serif",color:"#C8A96E",marginBottom:18,marginTop:0},
   genPanel:{margin:"12px 0 0",background:"#0d0d0d",border:"1px solid #C8A96E33",borderRadius:14,padding:18},
   spinner:{width:20,height:20,border:"2px solid #1a1a1a",borderTop:"2px solid #C8A96E",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0},
   nav:{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#080808",borderTop:"1px solid #C8A96E1a",display:"flex",justifyContent:"space-around",padding:"10px 0 16px",zIndex:50},
