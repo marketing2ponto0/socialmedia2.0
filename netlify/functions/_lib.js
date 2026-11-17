@@ -24,6 +24,24 @@ const THEMES = {
   'cinema':{q:['cinema filmes lançamentos estreias','streaming séries'],g1:['g1/pop-arte'],kw:['cinema','filme','estreia','série','streaming','ator','atriz']},
 };
 
+
+// Feeds RSS diretos de grandes portais (falha = ignora) e seções de tópico do Google News
+const GTOPIC = { saude:'HEALTH', entretenimento:'ENTERTAINMENT', tecnologia:'TECHNOLOGY', negocios:'BUSINESS', esportes:'SPORTS' };
+const SITE_FEEDS = {
+  saude:[['CNN Brasil','https://www.cnnbrasil.com.br/saude/feed/'],['Veja Saúde','https://saude.abril.com.br/feed/'],['Folha','https://feeds.folha.uol.com.br/equilibrioesaude/rss091.xml'],['Metrópoles','https://www.metropoles.com/saude/feed']],
+  entretenimento:[['CNN Brasil','https://www.cnnbrasil.com.br/entretenimento/feed/'],['Folha','https://feeds.folha.uol.com.br/ilustrada/rss091.xml'],['Metrópoles','https://www.metropoles.com/entretenimento/feed']],
+  gastronomia:[['Folha','https://feeds.folha.uol.com.br/comida/rss091.xml'],['Metrópoles','https://www.metropoles.com/colunas/mariana-ferro/feed']],
+  tecnologia:[['CNN Brasil','https://www.cnnbrasil.com.br/tecnologia/feed/'],['Folha','https://feeds.folha.uol.com.br/tec/rss091.xml'],['Canaltech','https://canaltech.com.br/rss/'],['Tecnoblog','https://tecnoblog.net/feed/']],
+  moda:[['Folha','https://feeds.folha.uol.com.br/comida/rss091.xml'],['Metrópoles','https://www.metropoles.com/vida-e-estilo/feed']],
+  negocios:[['CNN Brasil','https://www.cnnbrasil.com.br/economia/feed/'],['Folha','https://feeds.folha.uol.com.br/mercado/rss091.xml'],['Exame','https://exame.com/feed/']],
+  esportes:[['CNN Brasil','https://www.cnnbrasil.com.br/esportes/feed/'],['Folha','https://feeds.folha.uol.com.br/esporte/rss091.xml'],['Lance!','https://www.lance.com.br/rss.xml']],
+  turismo:[['CNN Brasil','https://www.cnnbrasil.com.br/viagemegastronomia/feed/'],['Folha','https://feeds.folha.uol.com.br/turismo/rss091.xml']],
+  passeios:[['Folha','https://feeds.folha.uol.com.br/turismo/rss091.xml'],['Metrópoles','https://www.metropoles.com/vida-e-estilo/feed']],
+  cinema:[['CNN Brasil','https://www.cnnbrasil.com.br/entretenimento/feed/'],['Folha','https://feeds.folha.uol.com.br/ilustrada/rss091.xml']],
+};
+// temas específicos de saúde herdam os feeds de saúde e filtram por palavra-chave
+for (const t of ['saude-ocular','nutricao','odonto','psicologia','fisioterapia','cardiologia','estetica']) SITE_FEEDS[t] = SITE_FEEDS.saude;
+
 const ent = s => s.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ').replace(/&amp;/g,'&');
 const decode = s => ent(ent((s||'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1')).replace(/<[^>]+>/g,' ')).replace(/\s+/g,' ').trim();
 
@@ -54,18 +72,24 @@ async function get(url) {
 
 async function fetchLive(theme) {
   const cfg = THEMES[theme] || { q: [theme], g1: [], broad: true };
-  const jobs = [];
+  const kwFilter = list => cfg.broad ? list : (cfg.kw?.length ? list.filter(a => cfg.kw.some(k => (a.title + ' ' + a.summary).toLowerCase().includes(k))) : []);
+  const jobs = []; // [nome, promessa]
+  const add = (name, p) => jobs.push(p.then(items => ({ name, items })));
   for (const q of cfg.q) {
     const e = encodeURIComponent(q);
-    jobs.push(get(`https://news.google.com/rss/search?q=${e}%20when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419`).then(x => parseRSS(x, 'Google News')));
-    jobs.push(get(`https://www.bing.com/news/search?q=${e}&format=rss&setmkt=pt-BR`).then(x => parseRSS(x, 'Bing Notícias')));
+    add('Google News', get(`https://news.google.com/rss/search?q=${e}%20when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419`).then(x => parseRSS(x, 'Google News')));
+    add('Bing', get(`https://www.bing.com/news/search?q=${e}&format=rss&setmkt=pt-BR`).then(x => parseRSS(x, 'Bing Notícias')));
   }
+  if (GTOPIC[theme]) add('Google Tópico', get(`https://news.google.com/rss/headlines/section/topic/${GTOPIC[theme]}?hl=pt-BR&gl=BR&ceid=BR:pt-419`).then(x => parseRSS(x, 'Google News')));
   for (const f of cfg.g1) {
     const url = cfg.ge && f.startsWith('ge/') ? 'https://ge.globo.com/rss/ge/' : `https://g1.globo.com/rss/${f}/`;
-    jobs.push(get(url).then(x => parseRSS(x, f.startsWith('ge') ? 'ge.globo' : 'g1.globo.com')).then(list => cfg.broad || !cfg.kw?.length ? (cfg.broad ? list : []) : list.filter(a => cfg.kw.some(k => (a.title + ' ' + a.summary).toLowerCase().includes(k)))));
+    add('Globo', get(url).then(x => kwFilter(parseRSS(x, f.startsWith('ge') ? 'ge.globo' : 'g1.globo.com'))));
   }
-  const all = (await Promise.all(jobs)).flat();
-  return all;
+  for (const [name, url] of (SITE_FEEDS[theme] || [])) add(name, get(url).then(x => kwFilter(parseRSS(x, name))));
+  const res = await Promise.all(jobs);
+  const stats = {};
+  for (const r of res) stats[r.name] = (stats[r.name] || 0) + r.items.length;
+  return { items: res.flatMap(r => r.items), stats };
 }
 
 const norm = t => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, '').split(' ').slice(0, 8).join(' ');
