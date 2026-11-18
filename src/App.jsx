@@ -61,6 +61,21 @@ export default function App() {
   const [showTplPicker,setShowTplPicker] = useState(false);
   const [pendingArticle,setPendingArticle] = useState(null);
   const [freeText,setFreeText] = useState("");
+  // ── APARÊNCIA: claro / escuro / automático ──
+  const [themeMode,setThemeMode] = useState(()=>lsGet("themeMode")||"auto");
+  useEffect(()=>{
+    lsSet("themeMode",themeMode);
+    const mq = window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
+    const apply=()=>{
+      const eff = themeMode==="auto"?(mq&&!mq.matches?"light":"dark"):themeMode;
+      document.documentElement.setAttribute("data-theme",eff);
+      const bg = eff==="light"?"#f6f5f1":"#080808";
+      document.documentElement.style.background=bg; document.body.style.background=bg;
+      const m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content",bg);
+    };
+    apply();
+    if(themeMode==="auto"&&mq){ mq.addEventListener?mq.addEventListener("change",apply):mq.addListener(apply); return ()=>{ mq.removeEventListener?mq.removeEventListener("change",apply):mq.removeListener(apply); }; }
+  },[themeMode]);
   // ── NUVEM (Supabase): salva clientes, modelos, temas e histórico ──
   const [history,setHistory] = useState(()=>lsGet("history")||[]);
   const [cloudCode,setCloudCode] = useState(()=>lsGet("cloudcode")||"");
@@ -227,16 +242,16 @@ export default function App() {
 
   // ── CLIENT TABS ──────────────────────────────────────────────────────
   const ClientTabs = ()=>(
-    <div style={{borderBottom:"1px solid #111",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+    <div style={{borderBottom:"1px solid var(--card)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
       <div style={{display:"flex",minWidth:"max-content",padding:"0 12px"}}>
         {clients.map(c=>(
-          <button key={c.id} style={{background:"none",border:"none",borderBottom:`2px solid ${activeClientId===c.id?c.color:"transparent"}`,padding:"8px 12px",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",color:activeClientId===c.id?"#fff":"#444",fontFamily:"'Montserrat',sans-serif"}}
+          <button key={c.id} style={{background:"none",border:"none",borderBottom:`2px solid ${activeClientId===c.id?c.color:"transparent"}`,padding:"8px 12px",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",color:activeClientId===c.id?"var(--fg)":"var(--t3)",fontFamily:"'Montserrat',sans-serif"}}
             onClick={()=>{setActiveClientId(c.id);setActiveTheme(null);setGenerated(null);setView("client");}}>
             <span style={{width:6,height:6,borderRadius:"50%",background:c.color,flexShrink:0}}/>
             {c.name}
           </button>
         ))}
-        <button style={{background:"none",border:"none",padding:"8px 12px",color:"#333",cursor:"pointer",fontSize:16}} onClick={()=>{setEditingClient(null);setView("add-client");}}>+</button>
+        <button style={{background:"none",border:"none",padding:"8px 12px",color:"var(--t4)",cursor:"pointer",fontSize:16}} onClick={()=>{setEditingClient(null);setView("add-client");}}>+</button>
       </div>
     </div>
   );
@@ -248,44 +263,44 @@ export default function App() {
       <div style={S.genPanel}>
         <div style={{display:"flex",alignItems:"center",gap:12,padding:16,justifyContent:"center"}}>
           <div style={S.spinner}/>
-          <span style={{color:"#C8A96E",fontSize:13}}>Gerando{selectedTpl?.url&&extractCanvaId(selectedTpl?.url)?" e criando no Canva":""}...</span>
+          <span style={{color:"var(--gold)",fontSize:13}}>Gerando{selectedTpl?.url&&extractCanvaId(selectedTpl?.url)?" e criando no Canva":""}...</span>
         </div>
       </div>
     );
     if(!generated) return null;
     return (
       <div style={S.genPanel}>
-        <div style={{fontSize:13,fontWeight:700,color:"#C8A96E",marginBottom:4,fontFamily:"'Montserrat',sans-serif"}}>
+        <div style={{fontSize:13,fontWeight:700,color:"var(--gold)",marginBottom:4,fontFamily:"'Montserrat',sans-serif"}}>
           {generated.artType==="carrossel"?"📚 Carrossel":"🖼️ Arte Simples"} · {activeClient?.name}
         </div>
-        {generated.tplLabel&&<div style={{fontSize:11,color:"#555",marginBottom:14}}>Modelo: {generated.tplLabel}</div>}
+        {generated.tplLabel&&<div style={{fontSize:11,color:"var(--t2)",marginBottom:14}}>Modelo: {generated.tplLabel}</div>}
         {generated.canvaLink&&(
           <a href={generated.canvaLink} target="_blank" rel="noreferrer"
-            style={{display:"block",textAlign:"center",padding:"14px",background:"#C8A96E",color:"#000",borderRadius:12,fontWeight:700,fontSize:14,textDecoration:"none",margin:"0 0 16px"}}>
+            style={{display:"block",textAlign:"center",padding:"14px",background:"var(--gold)",color:"#000",borderRadius:12,fontWeight:700,fontSize:14,textDecoration:"none",margin:"0 0 16px"}}>
             🎨 Abrir Arte no Canva →
           </a>
         )}
         {generated.slides?(
           <div style={{marginBottom:14}}>
-            <div style={{fontSize:9,letterSpacing:2,color:"#333",marginBottom:10}}>SLIDES</div>
+            <div style={{fontSize:9,letterSpacing:2,color:"var(--t4)",marginBottom:10}}>SLIDES</div>
             {generated.slides.map((sl,i)=>(
-              <div key={i} style={{background:"#111",borderRadius:8,padding:"10px 12px",marginBottom:8,borderLeft:`3px solid ${themeObj.color}`}}>
+              <div key={i} style={{background:"var(--card)",borderRadius:8,padding:"10px 12px",marginBottom:8,borderLeft:`3px solid ${themeObj.color}`}}>
                 <div style={{fontSize:11,color:themeObj.color,fontWeight:700,marginBottom:3}}>Slide {i+1}: {sl.titulo}</div>
                 <div style={{fontSize:12,color:"#aaa"}}>{sl.texto}</div>
               </div>
             ))}
-            {[["Legenda",generated.caption,"#ccc"],["Hashtags",generated.hashtags,"#3b82f6"],["CTA",generated.cta,"#C8A96E"]].map(([l,v,c])=>v&&(
+            {[["Legenda",generated.caption,"var(--fg2)"],["Hashtags",generated.hashtags,"#3b82f6"],["CTA",generated.cta,"var(--gold)"]].map(([l,v,c])=>v&&(
               <div key={l} style={{marginBottom:10}}>
-                <div style={{fontSize:9,letterSpacing:2,color:"#333",marginBottom:3}}>{l}</div>
+                <div style={{fontSize:9,letterSpacing:2,color:"var(--t4)",marginBottom:3}}>{l}</div>
                 <div style={{fontSize:12,color:c,lineHeight:1.6}}>{v}</div>
               </div>
             ))}
           </div>
         ):(
           <div style={{marginBottom:14}}>
-            {[["Headline",generated.headline,"#fff"],["Legenda",generated.caption,"#ccc"],["Hashtags",generated.hashtags,"#3b82f6"],["CTA",generated.cta,"#C8A96E"]].map(([l,v,c])=>v&&(
+            {[["Headline",generated.headline,"var(--fg)"],["Legenda",generated.caption,"var(--fg2)"],["Hashtags",generated.hashtags,"#3b82f6"],["CTA",generated.cta,"var(--gold)"]].map(([l,v,c])=>v&&(
               <div key={l} style={{marginBottom:12}}>
-                <div style={{fontSize:9,letterSpacing:2,color:"#333",marginBottom:3}}>{l}</div>
+                <div style={{fontSize:9,letterSpacing:2,color:"var(--t4)",marginBottom:3}}>{l}</div>
                 <div style={{fontSize:13,color:c,lineHeight:1.6}}>{v}</div>
               </div>
             ))}
@@ -311,11 +326,11 @@ export default function App() {
       <div style={{display:"flex",gap:8}}>
         <input value={searchInput} onChange={e=>setSearchInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")runSearch(themeId);}}
           placeholder={`🔎 Buscar em ${themeObj.label} (ex.: miopia)`}
-          style={{flex:1,minWidth:0,background:"#111",border:"1px solid #222",borderRadius:10,color:"#fff",padding:"10px 12px",fontSize:13,fontFamily:"'Montserrat',sans-serif"}}/>
+          style={{flex:1,minWidth:0,background:"var(--card)",border:"1px solid var(--bd2)",borderRadius:10,color:"var(--fg)",padding:"10px 12px",fontSize:13,fontFamily:"'Montserrat',sans-serif"}}/>
         <button onClick={()=>runSearch(themeId)} style={{background:themeObj.color,color:"#000",border:"none",borderRadius:10,padding:"0 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>Buscar</button>
       </div>
       {searchRes&&searchRes.theme===themeId&&(
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8,fontSize:11,color:"#777"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8,fontSize:11,color:"var(--t1)"}}>
           <span>{searchRes.loading?"Buscando...":`${searchRes.news.length} resultado(s) para “${searchRes.q}” · fontes confiáveis primeiro`}</span>
           <button onClick={clearSearch} style={{background:"none",border:"none",color:themeObj.color,cursor:"pointer",fontSize:11}}>✕ Limpar busca</button>
         </div>
@@ -325,18 +340,18 @@ export default function App() {
   const listFor = (themeId)=> (searchRes&&searchRes.theme===themeId)?searchRes.news:(newsMap[themeId]||[]);
 
   const ArticleCard = ({article,themeObj})=>(
-    <div style={{background:"#0f0f0f",border:"1px solid #161616",borderLeft:`3px solid ${themeObj.color}33`,borderRadius:12,padding:14}}>
+    <div style={{background:"var(--bg2)",border:"1px solid var(--card2)",borderLeft:`3px solid ${themeObj.color}33`,borderRadius:12,padding:14}}>
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
         <span style={{fontSize:10,color:themeObj.color,fontWeight:600}}>{article.trusted&&"✓ "}{article.source}</span>
-        <span style={{fontSize:10,color:"#333"}}>{article.time}</span>
+        <span style={{fontSize:10,color:"var(--t4)"}}>{article.time}</span>
       </div>
-      <div style={{fontSize:14,fontWeight:600,color:"#fff",fontFamily:"'Montserrat',sans-serif",lineHeight:1.4,marginBottom:5}}>{article.title}</div>
-      <div style={{fontSize:12,color:"#555",lineHeight:1.5,marginBottom:10}}>{article.summary}</div>
+      <div style={{fontSize:14,fontWeight:600,color:"var(--fg)",fontFamily:"'Montserrat',sans-serif",lineHeight:1.4,marginBottom:5}}>{article.title}</div>
+      <div style={{fontSize:12,color:"var(--t2)",lineHeight:1.5,marginBottom:10}}>{article.summary}</div>
       <button style={{padding:"7px 16px",borderRadius:20,border:`1px solid ${themeObj.color}44`,background:themeObj.color+"1a",color:themeObj.color,fontSize:12,cursor:"pointer",fontWeight:600}}
         onClick={()=>handleGenerateClick(article)}>
         ✨ Gerar Arte
       </button>
-      {article.url&&article.url!=="#"&&<a href={article.url} target="_blank" rel="noreferrer" style={{marginLeft:10,fontSize:11,color:"#666",textDecoration:"underline"}}>Ler matéria ↗</a>}
+      {article.url&&article.url!=="#"&&<a href={article.url} target="_blank" rel="noreferrer" style={{marginLeft:10,fontSize:11,color:"var(--t1)",textDecoration:"underline"}}>Ler matéria ↗</a>}
     </div>
   );
 
@@ -344,13 +359,13 @@ export default function App() {
   const HomeView = ()=>(
     <div style={S.page}>
       <div style={S.header}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}><img src="/icons/logo.png" alt="M2.0" width="42" height="42" style={{borderRadius:10,display:"block"}}/><div style={{fontFamily:"'Montserrat',sans-serif",fontWeight:800,fontSize:15,letterSpacing:.3,whiteSpace:"nowrap"}}>Social Media <span style={{color:"#C8A96E"}}>2.0</span></div></div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}><img src="/icons/logo.png" alt="M2.0" width="42" height="42" style={{borderRadius:10,display:"block"}}/><div style={{fontFamily:"'Montserrat',sans-serif",fontWeight:800,fontSize:15,letterSpacing:.3,whiteSpace:"nowrap"}}>Social Media <span style={{color:"var(--gold)"}}>2.0</span></div></div>
         {apiOk===false&&<div style={{fontSize:11,color:"#f97316",background:"#f9731611",border:"1px solid #f9731633",borderRadius:20,padding:"4px 10px"}}>⚠️ Sem Groq Key</div>}
       </div>
       {clients.length===0?(
         <div style={{textAlign:"center",padding:"60px 20px"}}>
           <div style={{fontSize:48,marginBottom:12}}>👥</div>
-          <div style={{color:"#555",marginBottom:20,fontSize:14}}>Nenhum cliente cadastrado.</div>
+          <div style={{color:"var(--t2)",marginBottom:20,fontSize:14}}>Nenhum cliente cadastrado.</div>
           <button style={S.btnPrimary} onClick={()=>{setEditingClient(null);setView("add-client");}}>+ Adicionar Primeiro Cliente</button>
         </div>
       ):(
@@ -358,23 +373,23 @@ export default function App() {
           <div style={S.sectionTitle}>SELECIONE O CLIENTE</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,padding:"0 16px 16px"}}>
             {clients.map(c=>(
-              <div key={c.id} style={{background:"#111",border:`1px solid ${c.color}44`,borderRadius:14,padding:16,cursor:"pointer"}}
+              <div key={c.id} style={{background:"var(--card)",border:`1px solid ${c.color}44`,borderRadius:14,padding:16,cursor:"pointer"}}
                 onClick={()=>{setActiveClientId(c.id);setActiveTheme(null);setGenerated(null);setView("client");}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:c.color}}/>
                   {(c.brandColors||[]).filter(Boolean).slice(0,3).map((col,i)=>(
-                    <div key={i} style={{width:12,height:12,borderRadius:3,background:col,border:"1px solid #333"}}/>
+                    <div key={i} style={{width:12,height:12,borderRadius:3,background:col,border:"1px solid var(--t4)"}}/>
                   ))}
                 </div>
-                <div style={{fontSize:14,fontWeight:700,fontFamily:"'Montserrat',sans-serif",color:"#fff",marginBottom:2}}>{c.name}</div>
-                <div style={{fontSize:11,color:"#555"}}>{c.niche}</div>
-                <div style={{fontSize:10,color:"#333",marginTop:4}}>{(c.themes||[]).length} temas</div>
+                <div style={{fontSize:14,fontWeight:700,fontFamily:"'Montserrat',sans-serif",color:"var(--fg)",marginBottom:2}}>{c.name}</div>
+                <div style={{fontSize:11,color:"var(--t2)"}}>{c.niche}</div>
+                <div style={{fontSize:10,color:"var(--t4)",marginTop:4}}>{(c.themes||[]).length} temas</div>
               </div>
             ))}
-            <div style={{background:"#111",border:"1px dashed #1e1e1e",borderRadius:14,padding:16,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}
+            <div style={{background:"var(--card)",border:"1px dashed var(--bd)",borderRadius:14,padding:16,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}
               onClick={()=>{setEditingClient(null);setView("add-client");}}>
-              <div style={{fontSize:32,color:"#C8A96E"}}>+</div>
-              <div style={{fontSize:11,color:"#444"}}>Novo Cliente</div>
+              <div style={{fontSize:32,color:"var(--gold)"}}>+</div>
+              <div style={{fontSize:11,color:"var(--t3)"}}>Novo Cliente</div>
             </div>
           </div>
         </>
@@ -401,18 +416,18 @@ export default function App() {
             <div style={{width:10,height:10,borderRadius:"50%",background:activeClient.color}}/>
             <div style={{fontSize:20,fontWeight:700,fontFamily:"'Montserrat',sans-serif"}}>{activeClient.name}</div>
           </div>
-          <div style={{color:"#555",fontSize:13,marginBottom:10}}>{activeClient.niche}</div>
+          <div style={{color:"var(--t2)",fontSize:13,marginBottom:10}}>{activeClient.niche}</div>
           {(activeClient.brandColors||[]).filter(Boolean).length>0&&(
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
-              <span style={{fontSize:10,color:"#444"}}>Cores:</span>
+              <span style={{fontSize:10,color:"var(--t3)"}}>Cores:</span>
               {activeClient.brandColors.filter(Boolean).map((c,i)=>(
-                <div key={i} style={{width:20,height:20,borderRadius:5,background:c,border:"1px solid #2a2a2a"}} title={c}/>
+                <div key={i} style={{width:20,height:20,borderRadius:5,background:c,border:"1px solid var(--bd2)"}} title={c}/>
               ))}
             </div>
           )}
           {(activeClient.templates?.feeds||[]).filter(f=>f.url).length>0&&(
             <div style={{marginBottom:8}}>
-              <div style={{fontSize:9,color:"#333",letterSpacing:2,marginBottom:6}}>🖼️ FEEDS</div>
+              <div style={{fontSize:9,color:"var(--t4)",letterSpacing:2,marginBottom:6}}>🖼️ FEEDS</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {(activeClient.templates.feeds||[]).filter(f=>f.url).map(f=>(
                   <a key={f.id} href={f.url} target="_blank" rel="noreferrer" style={S.tplLink}>{f.label}</a>
@@ -422,7 +437,7 @@ export default function App() {
           )}
           {(activeClient.templates?.stories||[]).filter(s=>s.url).length>0&&(
             <div style={{marginBottom:8}}>
-              <div style={{fontSize:9,color:"#333",letterSpacing:2,marginBottom:6}}>📱 STORIES</div>
+              <div style={{fontSize:9,color:"var(--t4)",letterSpacing:2,marginBottom:6}}>📱 STORIES</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {(activeClient.templates.stories||[]).filter(s=>s.url).map(s=>(
                   <a key={s.id} href={s.url} target="_blank" rel="noreferrer" style={{...S.tplLink,borderColor:"#a855f733",color:"#a855f7"}}>{s.label}</a>
@@ -432,21 +447,21 @@ export default function App() {
           )}
         </div>
         <div style={{padding:"0 16px 14px"}}>
-          <button onClick={()=>{setGenerated(null);setView("free");}} style={{width:"100%",background:"#C8A96E15",border:"1px solid #C8A96E55",color:"#C8A96E",borderRadius:12,padding:14,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'Montserrat',sans-serif"}}>✍️ Criar com tema livre (sem notícia)</button>
+          <button onClick={()=>{setGenerated(null);setView("free");}} style={{width:"100%",background:"#C8A96E15",border:"1px solid #C8A96E55",color:"var(--gold)",borderRadius:12,padding:14,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'Montserrat',sans-serif"}}>✍️ Criar com tema livre (sem notícia)</button>
         </div>
         <div style={S.sectionTitle}>TEMAS DO CLIENTE</div>
         {clientThemes.length===0?(
-          <div style={{padding:"0 16px",color:"#555",fontSize:13}}>
-            Nenhum tema. <span style={{color:"#C8A96E",cursor:"pointer"}} onClick={()=>{setEditingClient(activeClient);setView("edit-client");}}>Editar →</span>
+          <div style={{padding:"0 16px",color:"var(--t2)",fontSize:13}}>
+            Nenhum tema. <span style={{color:"var(--gold)",cursor:"pointer"}} onClick={()=>{setEditingClient(activeClient);setView("edit-client");}}>Editar →</span>
           </div>
         ):(
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,padding:"0 16px 16px"}}>
             {clientThemes.map(t=>(
-              <div key={t.id} style={{background:"#111",border:`1px solid ${t.color}33`,borderRadius:12,padding:14,cursor:"pointer",textAlign:"center"}}
+              <div key={t.id} style={{background:"var(--card)",border:`1px solid ${t.color}33`,borderRadius:12,padding:14,cursor:"pointer",textAlign:"center"}}
                 onClick={()=>{setActiveTheme(t.id);loadTheme(t.id);setGenerated(null);clearSearch();setView("content");}}>
                 <div style={{fontSize:26,marginBottom:6}}>{t.icon}</div>
                 <div style={{fontSize:12,fontWeight:600,color:t.color,fontFamily:"'Montserrat',sans-serif"}}>{t.label}</div>
-                <div style={{fontSize:10,color:"#333",marginTop:3}}>{loadingTheme[t.id]?"↻ buscando...":newsMap[t.id]?newsMap[t.id].length+" artigos":"Toque para carregar"}</div>
+                <div style={{fontSize:10,color:"var(--t4)",marginTop:3}}>{loadingTheme[t.id]?"↻ buscando...":newsMap[t.id]?newsMap[t.id].length+" artigos":"Toque para carregar"}</div>
               </div>
             ))}
           </div>
@@ -455,10 +470,10 @@ export default function App() {
           <div style={{padding:"0 16px 16px"}}>
             <div style={{...S.sectionTitle,padding:"0 0 10px"}}>ÚLTIMOS CONTEÚDOS GERADOS</div>
             {hs.map(h=>(
-              <div key={h.id} style={{background:"#0f0f0f",border:"1px solid #161616",borderRadius:12,padding:12,marginBottom:8}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#555",marginBottom:4}}><span>{h.free?"✍️ Tema livre":h.theme} · {h.artType==="carrossel"?"📚":"🖼️"}</span><span>{new Date(h.ts).toLocaleDateString("pt-BR")}</span></div>
+              <div key={h.id} style={{background:"var(--bg2)",border:"1px solid var(--card2)",borderRadius:12,padding:12,marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"var(--t2)",marginBottom:4}}><span>{h.free?"✍️ Tema livre":h.theme} · {h.artType==="carrossel"?"📚":"🖼️"}</span><span>{new Date(h.ts).toLocaleDateString("pt-BR")}</span></div>
                 <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>{h.headline||h.title}</div>
-                <div style={{fontSize:11,color:"#666",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{h.caption}</div>
+                <div style={{fontSize:11,color:"var(--t1)",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{h.caption}</div>
                 <button style={{...S.btnCopy,marginTop:8,padding:"5px 12px",fontSize:11}} onClick={()=>{try{navigator.clipboard.writeText([h.caption,h.hashtags].filter(Boolean).join("\n\n")).then(()=>notify("📋 Copiado!"));}catch{}}}>📋 Copiar legenda</button>
               </div>
             ))}
@@ -484,11 +499,11 @@ export default function App() {
         <ClientTabs/>
         <div style={{padding:"16px"}}>
           <div style={{fontSize:18,fontWeight:700,fontFamily:"'Montserrat',sans-serif",marginBottom:4}}>✍️ Criar com tema livre</div>
-          <div style={{fontSize:12,color:"#555",marginBottom:12,lineHeight:1.5}}>Sem depender de notícia: escreva um tema ou cole um trecho de texto e a IA cria o tema da arte, a legenda e as hashtags.</div>
+          <div style={{fontSize:12,color:"var(--t2)",marginBottom:12,lineHeight:1.5}}>Sem depender de notícia: escreva um tema ou cole um trecho de texto e a IA cria o tema da arte, a legenda e as hashtags.</div>
           <textarea value={freeText} onChange={e=>setFreeText(e.target.value)} rows={6}
             placeholder={"Ex.: Dicas para proteger os olhos do sol no verão\n\nou cole aqui um trecho de texto, ideia, promoção, data comemorativa..."}
-            style={{width:"100%",background:"#111",border:"1px solid #222",borderRadius:10,color:"#fff",padding:12,fontSize:14,fontFamily:"'Montserrat',sans-serif",resize:"vertical"}}/>
-          <button onClick={go} disabled={genLoading} style={{width:"100%",marginTop:10,background:"#C8A96E",color:"#000",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:700,cursor:"pointer",opacity:genLoading?.6:1}}>✨ Escolher modelo e criar</button>
+            style={{width:"100%",background:"var(--card)",border:"1px solid var(--bd2)",borderRadius:10,color:"var(--fg)",padding:12,fontSize:14,fontFamily:"'Montserrat',sans-serif",resize:"vertical"}}/>
+          <button onClick={go} disabled={genLoading} style={{width:"100%",marginTop:10,background:"var(--gold)",color:"#000",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:700,cursor:"pointer",opacity:genLoading?.6:1}}>✨ Escolher modelo e criar</button>
           <div style={{marginTop:14}}><GeneratedPanel theme={null}/></div>
         </div>
       </div>
@@ -505,11 +520,11 @@ export default function App() {
           <div style={{fontSize:16,fontWeight:800,fontFamily:"'Montserrat',sans-serif"}}>🗞️ Notícias por tema</div>
           <button onClick={()=>refreshTheme(cur)} style={S.iconBtn}>🔄</button>
         </div>
-        <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",borderBottom:"1px solid #111"}}>
+        <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",borderBottom:"1px solid var(--card)"}}>
           <div style={{display:"flex",gap:8,padding:"10px 16px",minWidth:"max-content"}}>
             {allThemes.map(t=>(
               <button key={t.id} onClick={()=>{setActiveTheme(t.id);loadTheme(t.id);setGenerated(null);clearSearch();}}
-                style={{whiteSpace:"nowrap",padding:"7px 12px",borderRadius:20,cursor:"pointer",fontSize:12,fontFamily:"'Montserrat',sans-serif",border:`1px solid ${cur===t.id?t.color:t.color+"33"}`,background:cur===t.id?t.color+"22":"transparent",color:cur===t.id?t.color:"#666"}}>
+                style={{whiteSpace:"nowrap",padding:"7px 12px",borderRadius:20,cursor:"pointer",fontSize:12,fontFamily:"'Montserrat',sans-serif",border:`1px solid ${cur===t.id?t.color:t.color+"33"}`,background:cur===t.id?t.color+"22":"transparent",color:cur===t.id?t.color:"var(--t1)"}}>
                 {t.icon} {t.label}
               </button>
             ))}
@@ -517,18 +532,18 @@ export default function App() {
         </div>
         <div style={{padding:"12px 16px"}}>
           <div style={{fontSize:17,fontWeight:700,color:themeObj.color}}>{themeObj.icon} {themeObj.label}</div>
-          <div style={{fontSize:11,color:"#444"}}>{articles.length} artigos · mais recentes primeiro{activeClient?" · arte para "+activeClient.name:""}</div>
+          <div style={{fontSize:11,color:"var(--t3)"}}>{articles.length} artigos · mais recentes primeiro{activeClient?" · arte para "+activeClient.name:""}</div>
         </div>
         {SearchBar(cur,themeObj)}
         {(loadingTheme[cur]||(searchRes&&searchRes.theme===cur&&searchRes.loading))&&(
           <div style={{display:"flex",alignItems:"center",gap:12,padding:"30px",justifyContent:"center"}}>
-            <div style={S.spinner}/><span style={{color:"#555",fontSize:13}}>Buscando artigos...</span>
+            <div style={S.spinner}/><span style={{color:"var(--t2)",fontSize:13}}>Buscando artigos...</span>
           </div>
         )}
         {!loadingTheme[cur]&&!(searchRes&&searchRes.loading)&&articles.length===0&&(
           <div style={{textAlign:"center",padding:"40px 20px"}}>
             <div style={{fontSize:40,marginBottom:12}}>📭</div>
-            <div style={{color:"#555",marginBottom:16,fontSize:13}}>Sem artigos no momento.</div>
+            <div style={{color:"var(--t2)",marginBottom:16,fontSize:13}}>Sem artigos no momento.</div>
             <button style={S.btnPrimary} onClick={()=>refreshTheme(cur)}>Tentar novamente</button>
           </div>
         )}
@@ -562,18 +577,18 @@ export default function App() {
         <div style={{padding:"8px 16px 12px"}}>
           <div style={{fontSize:24,marginBottom:4}}>{themeObj.icon}</div>
           <div style={{fontSize:17,fontWeight:700,color:themeObj.color,fontFamily:"'Montserrat',sans-serif"}}>{themeObj.label}</div>
-          <div style={{fontSize:11,color:"#444"}}>{activeClient?.name} · {articles.length} artigos · mais recentes primeiro</div>
+          <div style={{fontSize:11,color:"var(--t3)"}}>{activeClient?.name} · {articles.length} artigos · mais recentes primeiro</div>
         </div>
         {SearchBar(activeTheme,themeObj)}
         {(loadingTheme[activeTheme]||(searchRes&&searchRes.theme===activeTheme&&searchRes.loading))&&(
           <div style={{display:"flex",alignItems:"center",gap:12,padding:"30px",justifyContent:"center"}}>
-            <div style={S.spinner}/><span style={{color:"#555",fontSize:13}}>Buscando artigos...</span>
+            <div style={S.spinner}/><span style={{color:"var(--t2)",fontSize:13}}>Buscando artigos...</span>
           </div>
         )}
         {!loadingTheme[activeTheme]&&!(searchRes&&searchRes.loading)&&articles.length===0&&(
           <div style={{textAlign:"center",padding:"40px 20px"}}>
             <div style={{fontSize:40,marginBottom:12}}>📭</div>
-            <div style={{color:"#555",marginBottom:16,fontSize:13}}>Sem artigos no momento.</div>
+            <div style={{color:"var(--t2)",marginBottom:16,fontSize:13}}>Sem artigos no momento.</div>
             <button style={S.btnPrimary} onClick={()=>refreshTheme(activeTheme)}>Tentar novamente</button>
           </div>
         )}
@@ -596,11 +611,11 @@ export default function App() {
         <div style={S.header}>
           <div>
             <div style={{fontSize:16,fontWeight:700,fontFamily:"'Montserrat',sans-serif"}}>📰 Todos os Conteúdos</div>
-            <div style={{fontSize:11,color:"#555"}}>{activeClient.name} · {total} artigos</div>
+            <div style={{fontSize:11,color:"var(--t2)"}}>{activeClient.name} · {total} artigos</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             {["simples","carrossel"].map(t=>(
-              <button key={t} onClick={()=>setArtType(t)} style={{padding:"4px 10px",borderRadius:20,border:`1px solid ${artType===t?"#C8A96E":"#222"}`,background:artType===t?"#C8A96E22":"transparent",color:artType===t?"#C8A96E":"#444",fontSize:10,cursor:"pointer"}}>
+              <button key={t} onClick={()=>setArtType(t)} style={{padding:"4px 10px",borderRadius:20,border:`1px solid ${artType===t?"var(--gold)":"var(--bd2)"}`,background:artType===t?"#C8A96E22":"transparent",color:artType===t?"var(--gold)":"var(--t3)",fontSize:10,cursor:"pointer"}}>
                 {t==="simples"?"🖼️":"📚"}
               </button>
             ))}
@@ -610,7 +625,7 @@ export default function App() {
         {clientThemes.length===0?(
           <div style={{textAlign:"center",padding:"60px 20px"}}>
             <div style={{fontSize:40,marginBottom:12}}>📭</div>
-            <div style={{color:"#555",fontSize:13,marginBottom:16}}>Nenhum tema configurado.</div>
+            <div style={{color:"var(--t2)",fontSize:13,marginBottom:16}}>Nenhum tema configurado.</div>
             <button style={S.btnPrimary} onClick={()=>{setEditingClient(activeClient);setView("edit-client");}}>Configurar Cliente</button>
           </div>
         ):(
@@ -620,21 +635,21 @@ export default function App() {
               const loading = loadingTheme[t.id];
               return (
                 <div key={t.id} style={{marginBottom:4}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px 8px",borderBottom:"1px solid #0f0f0f",cursor:"pointer"}}
+                  <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px 8px",borderBottom:"1px solid var(--bg2)",cursor:"pointer"}}
                     onClick={()=>{setActiveTheme(t.id);setView("content");}}>
                     <span style={{fontSize:18}}>{t.icon}</span>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:600,color:t.color,fontFamily:"'Montserrat',sans-serif"}}>{t.label}</div>
-                      <div style={{fontSize:10,color:"#444"}}>{loading?"buscando...":articles.length+" artigos"}</div>
+                      <div style={{fontSize:10,color:"var(--t3)"}}>{loading?"buscando...":articles.length+" artigos"}</div>
                     </div>
-                    <span style={{fontSize:11,color:"#333"}}>Ver todos →</span>
+                    <span style={{fontSize:11,color:"var(--t4)"}}>Ver todos →</span>
                   </div>
-                  {loading&&<div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px"}}><div style={S.spinner}/><span style={{color:"#555",fontSize:12}}>Carregando...</span></div>}
+                  {loading&&<div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px"}}><div style={S.spinner}/><span style={{color:"var(--t2)",fontSize:12}}>Carregando...</span></div>}
                   {!loading&&(
                     <div style={{display:"flex",flexDirection:"column",gap:8,padding:"8px 16px"}}>
                       {articles.slice(0,3).map(a=><ArticleCard key={a.id} article={a} themeObj={t}/>)}
                       {articles.length>3&&(
-                        <button style={{background:"none",border:"1px solid #1a1a1a",borderRadius:10,padding:"10px",color:"#444",fontSize:12,cursor:"pointer"}}
+                        <button style={{background:"none",border:"1px solid var(--card2)",borderRadius:10,padding:"10px",color:"var(--t3)",fontSize:12,cursor:"pointer"}}
                           onClick={()=>{setActiveTheme(t.id);setView("content");}}>
                           + {articles.length-3} artigos em {t.label}
                         </button>
@@ -656,27 +671,36 @@ export default function App() {
     <div style={S.page}>
       <div style={S.header}>
         <button onClick={()=>setView("home")} style={S.backBtn}>← Voltar</button>
-        <div style={{color:"#C8A96E",fontSize:13}}>Configurações</div>
+        <div style={{color:"var(--gold)",fontSize:13}}>Configurações</div>
       </div>
       <div style={{padding:"0 16px"}}>
-        <div style={{background:"#111",border:"1px solid #1e1e1e",borderRadius:14,padding:16,marginBottom:12}}>
+        <div style={{background:"var(--card)",border:"1px solid var(--bd)",borderRadius:14,padding:16,marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>🔑 API Status</div>
           <div style={{color:apiOk?"#22c55e":"#f97316",fontSize:14}}>{apiOk===null?"Verificando...":apiOk?"✅ Groq conectado (Llama 3.3 70B)":"❌ Configure GROQ_API_KEY no Netlify"}</div>
         </div>
-        <div style={{background:"#111",border:`1px solid ${cloudCode?"#22c55e44":"#C8A96E44"}`,borderRadius:14,padding:16,marginBottom:12}}>
+        <div style={{background:"var(--card)",border:"1px solid var(--bd)",borderRadius:14,padding:16,marginBottom:12}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>🎨 Aparência</div>
+          <div style={{display:"flex",gap:8}}>
+            {[["light","☀️ Claro"],["dark","🌙 Escuro"],["auto","🖥️ Automático"]].map(([k,l])=>(
+              <button key={k} onClick={()=>setThemeMode(k)} style={{flex:1,padding:"10px 6px",borderRadius:10,fontSize:12,cursor:"pointer",fontFamily:"'Montserrat',sans-serif",fontWeight:themeMode===k?700:500,border:`2px solid ${themeMode===k?"var(--gold)":"var(--bd)"}`,background:themeMode===k?"#C8A96E22":"var(--bg2)",color:themeMode===k?"var(--gold)":"var(--t1)"}}>{l}</button>
+            ))}
+          </div>
+          <div style={{fontSize:11,color:"var(--t2)",marginTop:8}}>Automático segue o modo claro/escuro do seu celular.</div>
+        </div>
+        <div style={{background:"var(--card)",border:`1px solid ${cloudCode?"#22c55e44":"#C8A96E44"}`,borderRadius:14,padding:16,marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>☁️ Nuvem (salvar tudo)</div>
           {!cloudCode?(
             <>
-              <div style={{color:"#777",fontSize:12,lineHeight:1.5,marginBottom:10}}>Salva clientes, modelos, temas e o histórico de conteúdos. Crie um <b style={{color:"#C8A96E"}}>código de acesso</b> (mín. 8 caracteres) e use o MESMO código em cada aparelho. Guarde-o: sem ele ninguém acessa seus dados — nem eu consigo recuperar.</div>
+              <div style={{color:"var(--t1)",fontSize:12,lineHeight:1.5,marginBottom:10}}>Salva clientes, modelos, temas e o histórico de conteúdos. Crie um <b style={{color:"var(--gold)"}}>código de acesso</b> (mín. 8 caracteres) e use o MESMO código em cada aparelho. Guarde-o: sem ele ninguém acessa seus dados — nem eu consigo recuperar.</div>
               <input type="password" value={cloudInput} onChange={e=>setCloudInput(e.target.value)} placeholder="Seu código de acesso" style={S.input}/>
               <button style={S.btnPrimary} onClick={activateCloud}>Ativar nuvem</button>
             </>
           ):(
             <>
-              <div style={{fontSize:14,color:cloudStatus.state==="error"?"#f97316":cloudStatus.state==="syncing"?"#C8A96E":"#22c55e",marginBottom:4}}>
+              <div style={{fontSize:14,color:cloudStatus.state==="error"?"#f97316":cloudStatus.state==="syncing"?"var(--gold)":"#22c55e",marginBottom:4}}>
                 {cloudStatus.state==="syncing"?"↻ Sincronizando...":cloudStatus.state==="error"?"⚠️ "+(cloudStatus.msg||"Erro"):"✅ Tudo salvo na nuvem"}
               </div>
-              {cloudStatus.at&&<div style={{fontSize:11,color:"#555",marginBottom:10}}>Última sincronização: {new Date(cloudStatus.at).toLocaleString("pt-BR")}</div>}
+              {cloudStatus.at&&<div style={{fontSize:11,color:"var(--t2)",marginBottom:10}}>Última sincronização: {new Date(cloudStatus.at).toLocaleString("pt-BR")}</div>}
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <button style={S.btnSec} onClick={()=>syncPull(cloudCode,false)}>🔄 Sincronizar agora</button>
                 <button style={S.btnCancel} onClick={disconnectCloud}>Desconectar este aparelho</button>
@@ -684,15 +708,15 @@ export default function App() {
             </>
           )}
         </div>
-        <div style={{background:"#111",border:"1px solid #1e1e1e",borderRadius:14,padding:16,marginBottom:12}}>
+        <div style={{background:"var(--card)",border:"1px solid var(--bd)",borderRadius:14,padding:16,marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>👥 Clientes</div>
-          <div style={{color:"#555",fontSize:14}}>{clients.length} cliente(s) cadastrado(s) · {history.length} conteúdo(s) no histórico</div>
+          <div style={{color:"var(--t2)",fontSize:14}}>{clients.length} cliente(s) cadastrado(s) · {history.length} conteúdo(s) no histórico</div>
         </div>
-        <div style={{background:"#111",border:"1px solid #1e1e1e",borderRadius:14,padding:16,marginBottom:12}}>
+        <div style={{background:"var(--card)",border:"1px solid var(--bd)",borderRadius:14,padding:16,marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>📦 Versão</div>
-          <div style={{color:"#555",fontSize:14}}>Agente Social Media M2.0 v1.0</div>
+          <div style={{color:"var(--t2)",fontSize:14}}>Agente Social Media M2.0 v1.0</div>
         </div>
-        <button style={{...S.btnCancel,marginTop:8,width:"100%",color:confirmClear?"#ef4444":"#555",borderColor:confirmClear?"#ef4444":"#1e1e1e"}}
+        <button style={{...S.btnCancel,marginTop:8,width:"100%",color:confirmClear?"#ef4444":"var(--t2)",borderColor:confirmClear?"#ef4444":"var(--bd)"}}
           onClick={()=>{ if(!confirmClear){setConfirmClear(true);setTimeout(()=>setConfirmClear(false),5000);return;} setConfirmClear(false);setClients([]);setHistory([]);setActiveClientId(null);notify(cloudCode?"🗑️ Dados limpos (também na nuvem).":"🗑️ Dados limpos."); }}>
           {confirmClear?"Toque de novo para confirmar"+(cloudCode?" (apaga também na nuvem)":""):"🗑️ Limpar Todos os Dados"}
         </button>
@@ -703,14 +727,17 @@ export default function App() {
   return (
     <div style={S.root}>
       <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box} input:focus{outline:none;border-color:#C8A96E!important} input[type=color]{-webkit-appearance:none} ::-webkit-scrollbar{height:3px;background:#111} ::-webkit-scrollbar-thumb{background:#222}`}</style>
+      <style>{`:root{--bg:#080808;--bg2:#0d0d0d;--card:#111;--card2:#1a1a1a;--bd:#1e1e1e;--bd2:#2a2a2a;--fg:#fff;--fg2:#ccc;--t1:#777;--t2:#555;--t3:#444;--t4:#333;--gold:#C8A96E;color-scheme:dark}
+:root[data-theme="light"]{--bg:#f6f5f1;--bg2:#fff;--card:#fff;--card2:#efede7;--bd:#e2dfd6;--bd2:#d3cfc2;--fg:#151515;--fg2:#333;--t1:#555;--t2:#666;--t3:#888;--t4:#aaa;--gold:#8A6A2A;color-scheme:light}
+body{background:var(--bg)}
+@keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box} input:focus{outline:none;border-color:var(--gold)!important} input[type=color]{-webkit-appearance:none} ::-webkit-scrollbar{height:3px;background:var(--card)} ::-webkit-scrollbar-thumb{background:var(--bd2)}`}</style>
       {notification&&(
-        <div style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,background:notification.type==="error"?"#1a0808":"#111",border:`1px solid ${notification.type==="error"?"#ef444466":"#C8A96E55"}`,color:notification.type==="error"?"#ef4444":"#C8A96E",fontSize:13,whiteSpace:"nowrap",boxShadow:"0 4px 20px #00000088"}}>
+        <div style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,background:notification.type==="error"?"#1a0808":"var(--card)",border:`1px solid ${notification.type==="error"?"#ef444466":"#C8A96E55"}`,color:notification.type==="error"?"#ef4444":"var(--gold)",fontSize:13,whiteSpace:"nowrap",boxShadow:"0 4px 20px #00000088"}}>
           {notification.msg}
         </div>
       )}
       {view==="home"&&!cloudCode&&(
-        <div onClick={()=>setView("settings")} style={{margin:"10px 16px 0",padding:"10px 14px",borderRadius:12,background:"#C8A96E15",border:"1px solid #C8A96E44",color:"#C8A96E",fontSize:12,cursor:"pointer",lineHeight:1.4}}>☁️ Ative a nuvem para salvar todos os clientes e conteúdos (toque aqui)</div>
+        <div onClick={()=>setView("settings")} style={{margin:"10px 16px 0",padding:"10px 14px",borderRadius:12,background:"#C8A96E15",border:"1px solid #C8A96E44",color:"var(--gold)",fontSize:12,cursor:"pointer",lineHeight:1.4}}>☁️ Ative a nuvem para salvar todos os clientes e conteúdos (toque aqui)</div>
       )}
       {view==="home"&&HomeView()}
       {view==="client"&&ClientView()}
@@ -724,19 +751,19 @@ export default function App() {
       {promptModal&&<PromptModal text={promptModal} onClose={()=>setPromptModal(null)} notify={notify}/>}
       {["home","news","client","content","allcontent","settings"].includes(view)&&(
         <nav style={S.nav}>
-          <button style={{...S.navBtn,color:view==="home"?"#C8A96E":"#444"}} onClick={()=>setView("home")}>
+          <button style={{...S.navBtn,color:view==="home"?"var(--gold)":"var(--t3)"}} onClick={()=>setView("home")}>
             <span style={{fontSize:20}}>🏠</span><span style={{fontSize:9,letterSpacing:1}}>INÍCIO</span>
           </button>
-          <button style={{...S.navBtn,color:view==="news"?"#C8A96E":"#444"}} onClick={()=>{if(!activeTheme)setActiveTheme(allThemes[0]?.id);loadTheme(activeTheme||allThemes[0]?.id);setView("news");setGenerated(null);}}>
+          <button style={{...S.navBtn,color:view==="news"?"var(--gold)":"var(--t3)"}} onClick={()=>{if(!activeTheme)setActiveTheme(allThemes[0]?.id);loadTheme(activeTheme||allThemes[0]?.id);setView("news");setGenerated(null);}}>
             <span style={{fontSize:20}}>🗞️</span><span style={{fontSize:9,letterSpacing:1}}>NOTÍCIAS</span>
           </button>
-          <button style={{...S.navBtn,color:view==="client"?"#C8A96E":"#444"}} onClick={()=>{setView("client");setGenerated(null);}}>
+          <button style={{...S.navBtn,color:view==="client"?"var(--gold)":"var(--t3)"}} onClick={()=>{setView("client");setGenerated(null);}}>
             <span style={{fontSize:20}}>🏢</span><span style={{fontSize:9,letterSpacing:1}}>EMPRESA</span>
           </button>
-          <button style={{...S.navBtn,color:view==="allcontent"?"#C8A96E":"#444"}} onClick={()=>{setView("allcontent");setGenerated(null);}}>
+          <button style={{...S.navBtn,color:view==="allcontent"?"var(--gold)":"var(--t3)"}} onClick={()=>{setView("allcontent");setGenerated(null);}}>
             <span style={{fontSize:20}}>📰</span><span style={{fontSize:9,letterSpacing:1}}>CONTEÚDOS</span>
           </button>
-          <button style={{...S.navBtn,color:view==="settings"?"#C8A96E":"#444"}} onClick={()=>setView("settings")}>
+          <button style={{...S.navBtn,color:view==="settings"?"var(--gold)":"var(--t3)"}} onClick={()=>setView("settings")}>
             <span style={{fontSize:20}}>⚙️</span><span style={{fontSize:9,letterSpacing:1}}>CONFIG</span>
           </button>
         </nav>
@@ -754,11 +781,11 @@ function TplPicker({article,onConfirm,onCanva,onCancel,artType,setArtType,client
       <div style={S.overlay}>
         <div style={{...S.formCard,maxWidth:400}}>
           <div style={S.formTitle}>🎨 Gerar Arte</div>
-          <div style={{fontSize:13,color:"#666",marginBottom:16,lineHeight:1.5}}>"{article.title}"</div>
+          <div style={{fontSize:13,color:"var(--t1)",marginBottom:16,lineHeight:1.5}}>"{article.title}"</div>
           <div style={S.label}>TIPO DE ARTE</div>
           <div style={{display:"flex",gap:10,marginBottom:20}}>
             {["simples","carrossel"].map(t=>(
-              <button key={t} onClick={()=>setArtType(t)} style={{flex:1,padding:"12px",borderRadius:12,border:`2px solid ${artType===t?"#C8A96E":"#1e1e1e"}`,background:artType===t?"#C8A96E11":"#0d0d0d",color:artType===t?"#C8A96E":"#555",cursor:"pointer",fontWeight:artType===t?700:400,fontSize:13}}>
+              <button key={t} onClick={()=>setArtType(t)} style={{flex:1,padding:"12px",borderRadius:12,border:`2px solid ${artType===t?"var(--gold)":"var(--bd)"}`,background:artType===t?"#C8A96E11":"var(--bg2)",color:artType===t?"var(--gold)":"var(--t2)",cursor:"pointer",fontWeight:artType===t?700:400,fontSize:13}}>
                 {t==="simples"?"🖼️ Arte Simples":"📚 Carrossel"}
               </button>
             ))}
@@ -768,26 +795,26 @@ function TplPicker({article,onConfirm,onCanva,onCancel,artType,setArtType,client
               <div style={S.label}>MODELO DO CLIENTE</div>
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20,maxHeight:280,overflowY:"auto"}}>
                 {feeds.map(f=>(
-                  <button key={f.id} onClick={()=>setLocalTpl({...f,type:"feed"})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`1px solid ${localTpl?.id===f.id?"#C8A96E":"#1e1e1e"}`,background:localTpl?.id===f.id?"#C8A96E11":"#0d0d0d",cursor:"pointer",textAlign:"left"}}>
+                  <button key={f.id} onClick={()=>setLocalTpl({...f,type:"feed"})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`1px solid ${localTpl?.id===f.id?"var(--gold)":"var(--bd)"}`,background:localTpl?.id===f.id?"#C8A96E11":"var(--bg2)",cursor:"pointer",textAlign:"left"}}>
                     <span>🖼️</span>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:13,color:localTpl?.id===f.id?"#C8A96E":"#ccc",fontWeight:600}}>{f.label}</div>
-                      <div style={{fontSize:10,color:"#444"}}>Feed{f.url?" · "+f.url.substring(0,28)+"...":" · sem link"}</div>
+                      <div style={{fontSize:13,color:localTpl?.id===f.id?"var(--gold)":"var(--fg2)",fontWeight:600}}>{f.label}</div>
+                      <div style={{fontSize:10,color:"var(--t3)"}}>Feed{f.url?" · "+f.url.substring(0,28)+"...":" · sem link"}</div>
                     </div>
-                    {localTpl?.id===f.id&&<span style={{color:"#C8A96E"}}>✓</span>}
+                    {localTpl?.id===f.id&&<span style={{color:"var(--gold)"}}>✓</span>}
                   </button>
                 ))}
                 {stories.map(s=>(
-                  <button key={s.id} onClick={()=>setLocalTpl({...s,type:"stories"})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`1px solid ${localTpl?.id===s.id?"#a855f7":"#1e1e1e"}`,background:localTpl?.id===s.id?"#a855f711":"#0d0d0d",cursor:"pointer",textAlign:"left"}}>
+                  <button key={s.id} onClick={()=>setLocalTpl({...s,type:"stories"})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`1px solid ${localTpl?.id===s.id?"#a855f7":"var(--bd)"}`,background:localTpl?.id===s.id?"#a855f711":"var(--bg2)",cursor:"pointer",textAlign:"left"}}>
                     <span>📱</span>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:13,color:localTpl?.id===s.id?"#a855f7":"#ccc",fontWeight:600}}>{s.label}</div>
-                      <div style={{fontSize:10,color:"#444"}}>Stories{s.url?" · "+s.url.substring(0,28)+"...":" · sem link"}</div>
+                      <div style={{fontSize:13,color:localTpl?.id===s.id?"#a855f7":"var(--fg2)",fontWeight:600}}>{s.label}</div>
+                      <div style={{fontSize:10,color:"var(--t3)"}}>Stories{s.url?" · "+s.url.substring(0,28)+"...":" · sem link"}</div>
                     </div>
                     {localTpl?.id===s.id&&<span style={{color:"#a855f7"}}>✓</span>}
                   </button>
                 ))}
-                <button onClick={()=>setLocalTpl(null)} style={{padding:"8px",borderRadius:10,border:`1px solid ${!localTpl?"#555":"#1e1e1e"}`,background:"transparent",color:!localTpl?"#888":"#444",cursor:"pointer",fontSize:12}}>
+                <button onClick={()=>setLocalTpl(null)} style={{padding:"8px",borderRadius:10,border:`1px solid ${!localTpl?"var(--t2)":"var(--bd)"}`,background:"transparent",color:!localTpl?"var(--t1)":"var(--t3)",cursor:"pointer",fontSize:12}}>
                   Sem modelo — só gerar texto
                 </button>
               </div>
@@ -834,7 +861,7 @@ function ClientForm({initial,onSave,onCancel,allThemes,onAddTheme,notify}){
     const TplList=({type,icon,accent})=>(
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <div style={{fontSize:10,color:"#666",letterSpacing:1.5}}>{icon} {type==="feeds"?"FEED":"STORIES"} ({(form.templates[type]||[]).length}/15)</div>
+          <div style={{fontSize:10,color:"var(--t1)",letterSpacing:1.5}}>{icon} {type==="feeds"?"FEED":"STORIES"} ({(form.templates[type]||[]).length}/15)</div>
           {(form.templates[type]||[]).length<15&&<button onClick={()=>addTplItem(type)} style={{background:"none",border:`1px solid ${accent}44`,borderRadius:20,color:accent,fontSize:11,padding:"3px 10px",cursor:"pointer"}}>+ Adicionar</button>}
         </div>
         {(form.templates[type]||[]).map((item,i)=>(
@@ -844,7 +871,7 @@ function ClientForm({initial,onSave,onCancel,allThemes,onAddTheme,notify}){
               <input style={{...S.input,marginBottom:0,fontSize:11,padding:"7px 10px",fontFamily:"monospace"}} value={item.url} onChange={e=>updTplItem(type,item.id,"url",e.target.value)} placeholder="https://www.canva.com/design/DAxxxxxx/..."/>
               <textarea rows={2} style={{...S.input,marginTop:4,marginBottom:0,fontSize:11,padding:"7px 10px",resize:"vertical"}} value={item.notes||""} onChange={e=>updTplItem(type,item.id,"notes",e.target.value)} placeholder="Mapa/regras deste modelo (opcional): ex. título máx 20 caracteres, corpo máx 99, não editar logo e rodapé"/>
             </div>
-            {(form.templates[type]||[]).length>1&&<button onClick={()=>removeTplItem(type,item.id)} style={{background:"none",border:"none",color:"#444",fontSize:15,cursor:"pointer",padding:"4px"}}>✕</button>}
+            {(form.templates[type]||[]).length>1&&<button onClick={()=>removeTplItem(type,item.id)} style={{background:"none",border:"none",color:"var(--t3)",fontSize:15,cursor:"pointer",padding:"4px"}}>✕</button>}
           </div>
         ))}
       </div>
@@ -860,25 +887,25 @@ function ClientForm({initial,onSave,onCancel,allThemes,onAddTheme,notify}){
           <input style={S.input} value={form.niche} onChange={e=>set("niche",e.target.value)} placeholder="Ex: Saúde Ocular"/>
           <label style={S.label}>Cor de Identificação no App</label>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>
-            {CLIENT_COLORS.map(c=><div key={c} onClick={()=>set("color",c)} style={{width:26,height:26,borderRadius:"50%",background:c,cursor:"pointer",border:form.color===c?"3px solid #fff":"2px solid transparent",boxShadow:form.color===c?`0 0 0 2px ${c}`:"none"}}/>)}
+            {CLIENT_COLORS.map(c=><div key={c} onClick={()=>set("color",c)} style={{width:26,height:26,borderRadius:"50%",background:c,cursor:"pointer",border:form.color===c?"3px solid var(--fg)":"2px solid transparent",boxShadow:form.color===c?`0 0 0 2px ${c}`:"none"}}/>)}
           </div>
-          <div style={{background:"#0d0d0d",border:"1px solid #1a1a1a",borderRadius:12,padding:"14px 14px 8px",marginBottom:16}}>
-            <div style={{fontSize:10,color:"#C8A96E",letterSpacing:2,marginBottom:12}}>🎨 CORES DA IDENTIDADE VISUAL</div>
+          <div style={{background:"var(--bg2)",border:"1px solid var(--card2)",borderRadius:12,padding:"14px 14px 8px",marginBottom:16}}>
+            <div style={{fontSize:10,color:"var(--gold)",letterSpacing:2,marginBottom:12}}>🎨 CORES DA IDENTIDADE VISUAL</div>
             {["Cor Principal","Cor Secundária","Cor de Destaque"].map((label,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-                <input type="color" value={form.brandColors[i]||"#000000"} onChange={e=>setBrandColor(i,e.target.value)} style={{width:40,height:36,border:"1px solid #2a2a2a",borderRadius:8,cursor:"pointer",padding:2}}/>
+                <input type="color" value={form.brandColors[i]||"#000000"} onChange={e=>setBrandColor(i,e.target.value)} style={{width:40,height:36,border:"1px solid var(--bd2)",borderRadius:8,cursor:"pointer",padding:2}}/>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:10,color:"#555",marginBottom:3}}>{label}</div>
+                  <div style={{fontSize:10,color:"var(--t2)",marginBottom:3}}>{label}</div>
                   <input style={{...S.input,marginBottom:0,fontSize:11,fontFamily:"monospace",padding:"6px 10px"}} value={form.brandColors[i]||""} onChange={e=>setBrandColor(i,e.target.value)} placeholder="#000000"/>
                 </div>
-                {form.brandColors[i]&&<div style={{width:24,height:24,borderRadius:6,background:form.brandColors[i],border:"1px solid #333",flexShrink:0}}/>}
+                {form.brandColors[i]&&<div style={{width:24,height:24,borderRadius:6,background:form.brandColors[i],border:"1px solid var(--t4)",flexShrink:0}}/>}
               </div>
             ))}
           </div>
           <label style={S.label}>Temas de Interesse</label>
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
             {allThemes.map(t=>(
-              <button key={t.id} onClick={()=>toggle(t.id)} style={{...S.chip,background:form.themes.includes(t.id)?t.color+"33":"#111",border:`1px solid ${form.themes.includes(t.id)?t.color:"#2a2a2a"}`,color:form.themes.includes(t.id)?t.color:"#555"}}>
+              <button key={t.id} onClick={()=>toggle(t.id)} style={{...S.chip,background:form.themes.includes(t.id)?t.color+"33":"var(--card)",border:`1px solid ${form.themes.includes(t.id)?t.color:"var(--bd2)"}`,color:form.themes.includes(t.id)?t.color:"var(--t2)"}}>
                 {t.icon} {t.label}
               </button>
             ))}
@@ -887,9 +914,9 @@ function ClientForm({initial,onSave,onCancel,allThemes,onAddTheme,notify}){
             <input style={{...S.input,flex:1,marginBottom:0}} value={customTheme} onChange={e=>setCustomTheme(e.target.value)} placeholder="Tema personalizado..."/>
             <button onClick={addCustom} style={S.btnSec}>+ Add</button>
           </div>
-          <div style={{background:"#0d0d0d",border:"1px solid #1a1a1a",borderRadius:12,padding:"14px 14px 4px",marginBottom:16}}>
-            <div style={{fontSize:10,color:"#C8A96E",letterSpacing:2,marginBottom:14}}>📐 TEMPLATES CANVA</div>
-            <TplList type="feeds" icon="🖼️" accent="#C8A96E"/>
+          <div style={{background:"var(--bg2)",border:"1px solid var(--card2)",borderRadius:12,padding:"14px 14px 4px",marginBottom:16}}>
+            <div style={{fontSize:10,color:"var(--gold)",letterSpacing:2,marginBottom:14}}>📐 TEMPLATES CANVA</div>
+            <TplList type="feeds" icon="🖼️" accent="var(--gold)"/>
             <TplList type="stories" icon="📱" accent="#a855f7"/>
             <label style={{...S.label,marginTop:4}}>📁 Modelo / Padrão Visual</label>
             <input style={S.input} value={form.templates.modelo||""} onChange={e=>setTpl("modelo",e.target.value)} placeholder="Link de referência (Canva, Drive...)"/>
@@ -959,7 +986,7 @@ function PromptModal({text,onClose,notify}){
     <div style={S.overlay}>
       <div style={{...S.formCard,maxWidth:420}}>
         <div style={S.formTitle}>📋 Pedido da arte</div>
-        <div style={{fontSize:12,color:"#777",marginBottom:10,lineHeight:1.5}}>Não consegui copiar automaticamente. Copie o texto abaixo e cole no Claude.</div>
+        <div style={{fontSize:12,color:"var(--t1)",marginBottom:10,lineHeight:1.5}}>Não consegui copiar automaticamente. Copie o texto abaixo e cole no Claude.</div>
         <textarea readOnly rows={12} value={text} onFocus={e=>e.target.select()} style={{...S.input,fontSize:11,fontFamily:"monospace"}}/>
         <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
           <button style={S.btnPrimary} onClick={()=>{try{navigator.clipboard.writeText(text);notify("📋 Copiado!");}catch{}}}>Copiar</button>
@@ -972,27 +999,27 @@ function PromptModal({text,onClose,notify}){
 }
 
 const S = {
-  root:{background:"#080808",minHeight:"100vh",maxWidth:480,margin:"0 auto",fontFamily:"'Montserrat',sans-serif",color:"#fff",paddingBottom:80},
+  root:{background:"var(--bg)",minHeight:"100vh",maxWidth:480,margin:"0 auto",fontFamily:"'Montserrat',sans-serif",color:"var(--fg)",paddingBottom:80},
   page:{paddingTop:8},
   header:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px 10px"},
   logo:{fontSize:22,fontWeight:800,fontFamily:"'Montserrat',sans-serif"},
-  logoSub:{fontSize:9,color:"#C8A96E",letterSpacing:3,marginTop:2},
-  backBtn:{background:"none",border:"none",color:"#C8A96E",fontSize:13,cursor:"pointer",padding:0},
-  iconBtn:{background:"none",border:"none",color:"#555",fontSize:18,cursor:"pointer",padding:4},
-  sectionTitle:{fontSize:9,letterSpacing:3,color:"#2a2a2a",padding:"4px 16px 10px"},
-  tplLink:{flex:1,minWidth:0,display:"block",textAlign:"center",padding:"7px 10px",background:"#C8A96E11",border:"1px solid #C8A96E33",borderRadius:8,color:"#C8A96E",fontSize:11,textDecoration:"none",fontWeight:600},
+  logoSub:{fontSize:9,color:"var(--gold)",letterSpacing:3,marginTop:2},
+  backBtn:{background:"none",border:"none",color:"var(--gold)",fontSize:13,cursor:"pointer",padding:0},
+  iconBtn:{background:"none",border:"none",color:"var(--t2)",fontSize:18,cursor:"pointer",padding:4},
+  sectionTitle:{fontSize:9,letterSpacing:3,color:"var(--bd2)",padding:"4px 16px 10px"},
+  tplLink:{flex:1,minWidth:0,display:"block",textAlign:"center",padding:"7px 10px",background:"#C8A96E11",border:"1px solid #C8A96E33",borderRadius:8,color:"var(--gold)",fontSize:11,textDecoration:"none",fontWeight:600},
   chip:{padding:"5px 10px",borderRadius:20,fontSize:11,cursor:"pointer"},
   label:{display:"block",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#3a3a3a",marginBottom:6},
-  input:{width:"100%",background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:10,padding:"11px 13px",color:"#fff",fontSize:13,marginBottom:14,fontFamily:"'Montserrat',sans-serif"},
-  btnPrimary:{background:"#C8A96E",color:"#000",border:"none",borderRadius:20,padding:"12px 22px",fontSize:13,fontWeight:700,cursor:"pointer"},
-  btnSec:{background:"#1a1a1a",color:"#C8A96E",border:"1px solid #C8A96E33",borderRadius:20,padding:"11px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"},
-  btnCancel:{background:"#111",color:"#555",border:"1px solid #1e1e1e",borderRadius:20,padding:"9px 16px",fontSize:12,cursor:"pointer"},
-  btnCopy:{background:"#1a1a1a",color:"#C8A96E",border:"1px solid #C8A96E33",borderRadius:20,padding:"9px 14px",fontSize:12,cursor:"pointer"},
+  input:{width:"100%",background:"var(--bg2)",border:"1px solid var(--bd)",borderRadius:10,padding:"11px 13px",color:"var(--fg)",fontSize:13,marginBottom:14,fontFamily:"'Montserrat',sans-serif"},
+  btnPrimary:{background:"var(--gold)",color:"#000",border:"none",borderRadius:20,padding:"12px 22px",fontSize:13,fontWeight:700,cursor:"pointer"},
+  btnSec:{background:"var(--card2)",color:"var(--gold)",border:"1px solid #C8A96E33",borderRadius:20,padding:"11px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"},
+  btnCancel:{background:"var(--card)",color:"var(--t2)",border:"1px solid var(--bd)",borderRadius:20,padding:"9px 16px",fontSize:12,cursor:"pointer"},
+  btnCopy:{background:"var(--card2)",color:"var(--gold)",border:"1px solid #C8A96E33",borderRadius:20,padding:"9px 14px",fontSize:12,cursor:"pointer"},
   overlay:{position:"fixed",inset:0,background:"#000000dd",zIndex:100,overflowY:"auto",padding:"20px 16px"},
-  formCard:{background:"#111",border:"1px solid #1e1e1e",borderRadius:20,padding:22,maxWidth:440,margin:"0 auto"},
-  formTitle:{fontSize:16,fontWeight:700,fontFamily:"'Montserrat',sans-serif",color:"#C8A96E",marginBottom:18,marginTop:0},
-  genPanel:{margin:"12px 0 0",background:"#0d0d0d",border:"1px solid #C8A96E33",borderRadius:14,padding:18},
-  spinner:{width:20,height:20,border:"2px solid #1a1a1a",borderTop:"2px solid #C8A96E",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0},
-  nav:{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#080808",borderTop:"1px solid #C8A96E1a",display:"flex",justifyContent:"space-around",padding:"10px 0 16px",zIndex:50},
+  formCard:{background:"var(--card)",border:"1px solid var(--bd)",borderRadius:20,padding:22,maxWidth:440,margin:"0 auto"},
+  formTitle:{fontSize:16,fontWeight:700,fontFamily:"'Montserrat',sans-serif",color:"var(--gold)",marginBottom:18,marginTop:0},
+  genPanel:{margin:"12px 0 0",background:"var(--bg2)",border:"1px solid #C8A96E33",borderRadius:14,padding:18},
+  spinner:{width:20,height:20,border:"2px solid var(--card2)",borderTop:"2px solid var(--gold)",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0},
+  nav:{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"var(--bg)",borderTop:"1px solid #C8A96E1a",display:"flex",justifyContent:"space-around",padding:"10px 0 16px",zIndex:50},
   navBtn:{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3},
 };
