@@ -134,10 +134,12 @@ export default function App() {
       const messages = [{role:"user",content: article.free ? `Tema/texto-base: "${article.summary}"\nCrie o conteúdo.` : `Notícia: "${article.title}"\nResumo: "${article.summary}"\nCrie o conteúdo.`}];
       const body = {model:"llama-3.3-70b-versatile",max_tokens:1000,system:sys2,messages};
       const data = await callClaude(body);
+      if(data.error) throw new Error(data.error);
       const textBlocks = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
       const jsonMatch = textBlocks.match(/\{[\s\S]*\}/);
       let postData={};
       if(jsonMatch){ try{postData=JSON.parse(jsonMatch[0].replace(/```json|```/g,"").trim());}catch{} }
+      if(!postData.headline&&!postData.caption){ throw new Error("a IA não devolveu um texto válido. Tente de novo."); }
       setGenerated({...postData,canvaLink:null,artType,tplLabel:tpl?.label,article:article.free?{...article,title:postData.headline||article.title}:article});
       notify("✨ Conteúdo gerado!");
     } catch(e){ notify("Erro: "+e.message,"error"); }

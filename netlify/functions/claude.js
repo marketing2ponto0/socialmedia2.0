@@ -24,7 +24,7 @@ exports.handler = async (event) => {
         'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
         messages: groqMessages,
         max_tokens: max_tokens || 1000,
         temperature: 0.7,
@@ -32,6 +32,9 @@ exports.handler = async (event) => {
     });
 
     const data = await res.json();
+    if (!res.ok || data.error) {
+      return { statusCode: 502, headers, body: JSON.stringify({ error: data.error?.message || ('Groq HTTP ' + res.status) }) };
+    }
 
     // Convert Groq response → Anthropic format (so App.jsx doesn't need to change)
     const text = data.choices?.[0]?.message?.content || '';

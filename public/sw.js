@@ -1,5 +1,9 @@
-const CACHE="social-m20-v3";
-const ASSETS=["/","/index.html"];
-self.addEventListener("install",(e)=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));self.skipWaiting();});
-self.addEventListener("activate",(e)=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==CACHE).map(n=>caches.delete(n)))));self.clients.claim();});
-self.addEventListener("fetch",(e)=>{if(e.request.url.includes("/api/"))return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const c=res.clone();caches.open(CACHE).then(ca=>ca.put(e.request,c));return res;})));});
+const CACHE="social-m20-v4";
+self.addEventListener("install",()=>{self.skipWaiting();});
+self.addEventListener("activate",(e)=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==CACHE).map(n=>caches.delete(n)))).then(()=>self.clients.claim()));});
+// rede primeiro (sempre pega a versão nova após deploy); cache só como fallback offline
+self.addEventListener("fetch",(e)=>{
+  const r=e.request;
+  if(r.method!=="GET"||r.url.includes("/api/")||!r.url.startsWith(self.location.origin))return;
+  e.respondWith(fetch(r).then(res=>{const c=res.clone();caches.open(CACHE).then(ca=>ca.put(r,c));return res;}).catch(()=>caches.match(r).then(m=>m||caches.match("/index.html"))));
+});

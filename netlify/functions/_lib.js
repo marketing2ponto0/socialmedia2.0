@@ -65,7 +65,7 @@ function parseRSS(xml, defaultSource) {
 }
 
 async function get(url) {
-  const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
+  const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 6000);
   try { const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' }, signal: ctrl.signal }); return r.ok ? await r.text() : ''; }
   catch { return ''; } finally { clearTimeout(to); }
 }
