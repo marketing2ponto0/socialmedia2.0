@@ -125,4 +125,40 @@ async function archiveWrite(theme, list) {
   } catch {}
 }
 
-module.exports = { parseRSS, THEMES, fetchLive, archiveRead, archiveWrite, mergeSort, rel };
+
+// Fontes consideradas confiáveis (aparecem primeiro nas buscas por assunto)
+const TRUSTED = ['g1','globo','ge.globo','folha','cnn brasil','estadão','estadao','uol','veja','agência brasil','agencia brasil','ministério da saúde','ministerio da saude','fiocruz','butantan','einstein','sírio-libanês','sirio-libanes','drauzio','usp','unicamp','unifesp','cbo','conselho brasileiro de oftalmologia','sociedade brasileira','sbc','sbp','abeso','crn','cfm','cfp','cfo','anvisa','oms','who','exame','valor','infomoney','sebrae','metrópoles','metropoles','correio braziliense','o globo','band','record','sbt','terra','istoé','istoe','época','epoca','revista oeste','nexo','bbc','dw','canaltech','tecnoblog','olhar digital','adoro cinema','omelete','lance','gazeta esportiva','cbf','cob','embratur','panrotas','viagem e turismo'];
+const isTrusted = src => { const x = (src||'').toLowerCase(); return TRUSTED.some(t => x === t || x.includes(t)); };
+
+async function fetchSearch(theme, term) {
+  const cfg = THEMES[theme] || { q: [theme] };
+  const ctx = (cfg.q[0] || '').split(' ').slice(0, 2).join(' ');
+  const full = `"${term}" ${ctx}`.trim();
+  const jobs = [];
+  for (const q of [full, term]) {
+    const e = encodeURIComponent(q);
+    jobs.push(get(`https://news.google.com/rss/search?q=${e}%20when:1y&hl=pt-BR&gl=BR&ceid=BR:pt-419`).then(x => parseRSS(x, 'Google News')));
+    jobs.push(get(`https://www.bing.com/news/search?q=${e}&format=rss&setmkt=pt-BR`).then(x => parseRSS(x, 'Bing Notícias')));
+  }
+  const nt = norm2(term);
+  return (await Promise.all(jobs)).flat().filter(a => norm2(a.title + ' ' + a.summary).includes(nt));
+}
+const norm2 = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+async function archiveSearch(theme, term) {
+  try {
+    const t = encodeURIComponent(`*${term.replace(/[*,()]/g, ' ').trim()}*`);
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/social_articles?theme=eq.${encodeURIComponent(theme)}&or=(title.ilike.${t},summary.ilike.${t})&order=published_at.desc&limit=40`, { headers: sbHeaders });
+    if (!r.ok) return []; const rows = await r.json();
+    return rows.map(a => ({ title: a.title, summary: a.summary, source: a.source, url: a.source_url, published_at: a.published_at }));
+  } catch { return []; }
+}
+// confiáveis primeiro, depois mais recentes
+function mergeRelevant(list, max = 30) {
+  const seen = new Set(), arr = [];
+  for (const a of list) { const k = norm(a.title); if (seen.has(k) || !a.url) continue; seen.add(k); arr.push({ ...a, trusted: isTrusted(a.source) }); }
+  arr.sort((x, y) => (y.trusted - x.trusted) || (new Date(y.published_at) - new Date(x.published_at)));
+  return arr.slice(0, max);
+}
+
+module.exports = { fetchSearch, archiveSearch, mergeRelevant, isTrusted, parseRSS, THEMES, fetchLive, archiveRead, archiveWrite, mergeSort, rel };

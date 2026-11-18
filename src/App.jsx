@@ -31,8 +31,8 @@ function extractCanvaId(url){
   return m?m[1]:null;
 }
 
-async function fetchThemeNews(themeId){
-  const res = await fetch(`/api/topics?theme=${themeId}`);
+async function fetchThemeNews(themeId,q){
+  const res = await fetch(`/api/topics?theme=${themeId}`+(q?`&q=${encodeURIComponent(q)}`:""));
   const data = await res.json();
   return data.news||[];
 }
@@ -60,6 +60,15 @@ export default function App() {
   const [showTplPicker,setShowTplPicker] = useState(false);
   const [pendingArticle,setPendingArticle] = useState(null);
   const [freeText,setFreeText] = useState("");
+  const [searchInput,setSearchInput] = useState("");
+  const [searchRes,setSearchRes] = useState(null); // {theme,q,news} | {loading:true,...}
+  const runSearch = async(themeId)=>{
+    const q=searchInput.trim(); if(q.length<2){ notify("Digite pelo menos 2 letras","error"); return; }
+    setSearchRes({theme:themeId,q,loading:true,news:[]});
+    try{ const news=await fetchThemeNews(themeId,q); setSearchRes({theme:themeId,q,news}); }
+    catch{ setSearchRes({theme:themeId,q,news:[],error:true}); }
+  };
+  const clearSearch = ()=>{ setSearchInput(""); setSearchRes(null); };
   const [apiOk,setApiOk] = useState(null);
 
   const activeClient = clients.find(c=>c.id===activeClientId);
@@ -223,10 +232,28 @@ export default function App() {
   };
 
   // ── ARTICLE CARD ──────────────────────────────────────────────────────
+  const SearchBar = (themeId,themeObj)=>(
+    <div style={{padding:"0 16px 10px"}}>
+      <div style={{display:"flex",gap:8}}>
+        <input value={searchInput} onChange={e=>setSearchInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")runSearch(themeId);}}
+          placeholder={`🔎 Buscar em ${themeObj.label} (ex.: miopia)`}
+          style={{flex:1,minWidth:0,background:"#111",border:"1px solid #222",borderRadius:10,color:"#fff",padding:"10px 12px",fontSize:13,fontFamily:"'Montserrat',sans-serif"}}/>
+        <button onClick={()=>runSearch(themeId)} style={{background:themeObj.color,color:"#000",border:"none",borderRadius:10,padding:"0 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>Buscar</button>
+      </div>
+      {searchRes&&searchRes.theme===themeId&&(
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8,fontSize:11,color:"#777"}}>
+          <span>{searchRes.loading?"Buscando...":`${searchRes.news.length} resultado(s) para “${searchRes.q}” · fontes confiáveis primeiro`}</span>
+          <button onClick={clearSearch} style={{background:"none",border:"none",color:themeObj.color,cursor:"pointer",fontSize:11}}>✕ Limpar busca</button>
+        </div>
+      )}
+    </div>
+  );
+  const listFor = (themeId)=> (searchRes&&searchRes.theme===themeId)?searchRes.news:(newsMap[themeId]||[]);
+
   const ArticleCard = ({article,themeObj})=>(
     <div style={{background:"#0f0f0f",border:"1px solid #161616",borderLeft:`3px solid ${themeObj.color}33`,borderRadius:12,padding:14}}>
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-        <span style={{fontSize:10,color:themeObj.color,fontWeight:600}}>{article.source}</span>
+        <span style={{fontSize:10,color:themeObj.color,fontWeight:600}}>{article.trusted&&"✓ "}{article.source}</span>
         <span style={{fontSize:10,color:"#333"}}>{article.time}</span>
       </div>
       <div style={{fontSize:14,fontWeight:600,color:"#fff",fontFamily:"'Montserrat',sans-serif",lineHeight:1.4,marginBottom:5}}>{article.title}</div>
@@ -235,6 +262,7 @@ export default function App() {
         onClick={()=>handleGenerateClick(article)}>
         ✨ Gerar Arte
       </button>
+      {article.url&&article.url!=="#"&&<a href={article.url} target="_blank" rel="noreferrer" style={{marginLeft:10,fontSize:11,color:"#666",textDecoration:"underline"}}>Ler matéria ↗</a>}
     </div>
   );
 
@@ -341,7 +369,7 @@ export default function App() {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,padding:"0 16px 16px"}}>
             {clientThemes.map(t=>(
               <div key={t.id} style={{background:"#111",border:`1px solid ${t.color}33`,borderRadius:12,padding:14,cursor:"pointer",textAlign:"center"}}
-                onClick={()=>{setActiveTheme(t.id);loadTheme(t.id);setGenerated(null);setView("content");}}>
+                onClick={()=>{setActiveTheme(t.id);loadTheme(t.id);setGenerated(null);clearSearch();setView("content");}}>
                 <div style={{fontSize:26,marginBottom:6}}>{t.icon}</div>
                 <div style={{fontSize:12,fontWeight:600,color:t.color,fontFamily:"'Montserrat',sans-serif"}}>{t.label}</div>
                 <div style={{fontSize:10,color:"#333",marginTop:3}}>{loadingTheme[t.id]?"↻ buscando...":newsMap[t.id]?newsMap[t.id].length+" artigos":"Toque para carregar"}</div>
@@ -382,7 +410,7 @@ export default function App() {
   const NewsView = ()=>{
     const cur = activeTheme||allThemes[0]?.id;
     const themeObj = allThemes.find(t=>t.id===cur)||{label:cur,icon:"🔖",color:"#C8A96E"};
-    const articles = newsMap[cur]||[];
+    const articles = listFor(cur);
     return (
       <div style={S.page}>
         <div style={S.header}>
@@ -392,7 +420,7 @@ export default function App() {
         <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",borderBottom:"1px solid #111"}}>
           <div style={{display:"flex",gap:8,padding:"10px 16px",minWidth:"max-content"}}>
             {allThemes.map(t=>(
-              <button key={t.id} onClick={()=>{setActiveTheme(t.id);loadTheme(t.id);setGenerated(null);}}
+              <button key={t.id} onClick={()=>{setActiveTheme(t.id);loadTheme(t.id);setGenerated(null);clearSearch();}}
                 style={{whiteSpace:"nowrap",padding:"7px 12px",borderRadius:20,cursor:"pointer",fontSize:12,fontFamily:"'Montserrat',sans-serif",border:`1px solid ${cur===t.id?t.color:t.color+"33"}`,background:cur===t.id?t.color+"22":"transparent",color:cur===t.id?t.color:"#666"}}>
                 {t.icon} {t.label}
               </button>
@@ -403,12 +431,13 @@ export default function App() {
           <div style={{fontSize:17,fontWeight:700,color:themeObj.color}}>{themeObj.icon} {themeObj.label}</div>
           <div style={{fontSize:11,color:"#444"}}>{articles.length} artigos · mais recentes primeiro{activeClient?" · arte para "+activeClient.name:""}</div>
         </div>
-        {loadingTheme[cur]&&(
+        {SearchBar(cur,themeObj)}
+        {(loadingTheme[cur]||(searchRes&&searchRes.theme===cur&&searchRes.loading))&&(
           <div style={{display:"flex",alignItems:"center",gap:12,padding:"30px",justifyContent:"center"}}>
             <div style={S.spinner}/><span style={{color:"#555",fontSize:13}}>Buscando artigos...</span>
           </div>
         )}
-        {!loadingTheme[cur]&&articles.length===0&&(
+        {!loadingTheme[cur]&&!(searchRes&&searchRes.loading)&&articles.length===0&&(
           <div style={{textAlign:"center",padding:"40px 20px"}}>
             <div style={{fontSize:40,marginBottom:12}}>📭</div>
             <div style={{color:"#555",marginBottom:16,fontSize:13}}>Sem artigos no momento.</div>
@@ -427,7 +456,7 @@ export default function App() {
   // ── CONTENT VIEW ──────────────────────────────────────────────────────
   const ContentView = ()=>{
     const themeObj = allThemes.find(t=>t.id===activeTheme)||{label:activeTheme,icon:"🔖",color:"#C8A96E"};
-    const articles = newsMap[activeTheme]||[];
+    const articles = listFor(activeTheme);
     return (
       <div style={S.page}>
         <div style={S.header}>
@@ -447,12 +476,13 @@ export default function App() {
           <div style={{fontSize:17,fontWeight:700,color:themeObj.color,fontFamily:"'Montserrat',sans-serif"}}>{themeObj.label}</div>
           <div style={{fontSize:11,color:"#444"}}>{activeClient?.name} · {articles.length} artigos · mais recentes primeiro</div>
         </div>
-        {loadingTheme[activeTheme]&&(
+        {SearchBar(activeTheme,themeObj)}
+        {(loadingTheme[activeTheme]||(searchRes&&searchRes.theme===activeTheme&&searchRes.loading))&&(
           <div style={{display:"flex",alignItems:"center",gap:12,padding:"30px",justifyContent:"center"}}>
             <div style={S.spinner}/><span style={{color:"#555",fontSize:13}}>Buscando artigos...</span>
           </div>
         )}
-        {!loadingTheme[activeTheme]&&articles.length===0&&(
+        {!loadingTheme[activeTheme]&&!(searchRes&&searchRes.loading)&&articles.length===0&&(
           <div style={{textAlign:"center",padding:"40px 20px"}}>
             <div style={{fontSize:40,marginBottom:12}}>📭</div>
             <div style={{color:"#555",marginBottom:16,fontSize:13}}>Sem artigos no momento.</div>
