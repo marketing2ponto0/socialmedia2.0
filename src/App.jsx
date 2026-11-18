@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
+import { cloudPull, cloudPush } from "./cloud.js";
 const ALL_THEMES = [
   { id:"saude",          label:"Saúde Geral",      icon:"🏥", color:"#22c55e" },
   { id:"saude-ocular",   label:"Saúde Ocular",     icon:"👁️",  color:"#06b6d4" },
@@ -60,6 +61,59 @@ export default function App() {
   const [showTplPicker,setShowTplPicker] = useState(false);
   const [pendingArticle,setPendingArticle] = useState(null);
   const [freeText,setFreeText] = useState("");
+  // ── NUVEM (Supabase): salva clientes, modelos, temas e histórico ──
+  const [history,setHistory] = useState(()=>lsGet("history")||[]);
+  const [cloudCode,setCloudCode] = useState(()=>lsGet("cloudcode")||"");
+  const [cloudInput,setCloudInput] = useState("");
+  const [cloudStatus,setCloudStatus] = useState({state:lsGet("cloudcode")?"idle":"off",at:lsGet("lastsync")||null,msg:""});
+  const [confirmClear,setConfirmClear] = useState(false);
+  const remoteApplied = useRef(false);   // evita devolver à nuvem o que acabou de vir dela
+  const pulled = useRef(false);          // só envia depois da 1ª leitura
+  const snapshot = ()=>({v:1,clients,customThemes:lsGet("customThemes")||[],history});
+  const applyRemote = (data,at,merge)=>{
+    remoteApplied.current = !merge;
+    const rc = Array.isArray(data.clients)?data.clients:[];
+    setClients(prev=>{
+      if(!merge) return rc;
+      const ids = new Set(rc.map(c=>c.id));
+      return [...rc,...prev.filter(c=>!ids.has(c.id))];
+    });
+    const ct = Array.isArray(data.customThemes)?data.customThemes:[];
+    if(ct.length){
+      const cur = lsGet("customThemes")||[];
+      const m = [...ct,...cur.filter(x=>!ct.find(y=>y.id===x.id))];
+      lsSet("customThemes",m);
+      setAllThemes([...ALL_THEMES,...m]);
+    }
+    setHistory(prev=>{
+      const rh = Array.isArray(data.history)?data.history:[];
+      const ids = new Set(rh.map(h=>h.id));
+      return [...rh,...(merge?prev.filter(h=>!ids.has(h.id)):[])].sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,300);
+    });
+    setActiveClientId(id=>id||(rc[0]?.id??null));
+    lsSet("lastsync",at); setCloudStatus({state:"ok",at,msg:""});
+  };
+  const syncPull = async(code,first)=>{
+    if(!code) return;
+    setCloudStatus(p=>({...p,state:"syncing",msg:""}));
+    try{
+      const row = await cloudPull(code);
+      const last = lsGet("lastsync");
+      if(row && (first || !last || row.updated_at>last)){ applyRemote(row.data||{},row.updated_at,first&&!!last===false); }
+      else if(!row){ const at=await cloudPush(code,snapshot()); lsSet("lastsync",at); setCloudStatus({state:"ok",at,msg:""}); }
+      else setCloudStatus({state:"ok",at:last,msg:""});
+      pulled.current = true;
+    }catch(e){ setCloudStatus(p=>({...p,state:"error",msg:e.message})); pulled.current = true; }
+  };
+  const activateCloud = async()=>{
+    const c = cloudInput.trim();
+    if(c.length<8){ notify("O código precisa ter pelo menos 8 caracteres","error"); return; }
+    lsSet("cloudcode",c); lsSet("lastsync",null); setCloudCode(c); setCloudInput("");
+    pulled.current = false;
+    await syncPull(c,true);
+    notify("☁️ Nuvem ativada!");
+  };
+  const disconnectCloud = ()=>{ lsSet("cloudcode",null); lsSet("lastsync",null); setCloudCode(""); setCloudStatus({state:"off",at:null,msg:""}); notify("Aparelho desconectado da nuvem. Os dados continuam salvos na nuvem."); };
   const [searchInput,setSearchInput] = useState("");
   const [searchRes,setSearchRes] = useState(null); // {theme,q,news} | {loading:true,...}
   const runSearch = async(themeId)=>{
@@ -73,6 +127,23 @@ export default function App() {
 
   const activeClient = clients.find(c=>c.id===activeClientId);
   useEffect(()=>{lsSet("clients",clients);},[clients]);
+  useEffect(()=>{lsSet("history",history);},[history]);
+  useEffect(()=>{ if(cloudCode) syncPull(cloudCode,!lsGet("lastsync")); },[cloudCode]); // eslint-disable-line
+  useEffect(()=>{
+    const onVis=()=>{ if(document.visibilityState==="visible"&&cloudCode&&pulled.current) syncPull(cloudCode,false); };
+    document.addEventListener("visibilitychange",onVis); return ()=>document.removeEventListener("visibilitychange",onVis);
+  },[cloudCode]); // eslint-disable-line
+  useEffect(()=>{
+    if(!cloudCode||!pulled.current) return;
+    if(remoteApplied.current){ remoteApplied.current=false; return; }
+    const t=setTimeout(async()=>{
+      setCloudStatus(p=>({...p,state:"syncing"}));
+      try{ const at=await cloudPush(cloudCode,snapshot()); lsSet("lastsync",at); setCloudStatus({state:"ok",at,msg:""}); }
+      catch(e){ setCloudStatus(p=>({...p,state:"error",msg:e.message})); }
+    },1500);
+    return ()=>clearTimeout(t);
+  },[clients,history,allThemes]); // eslint-disable-line
+
   useEffect(()=>{
     fetch('/api/status').then(r=>r.json()).then(d=>setApiOk(d.hasApiKey)).catch(()=>setApiOk(false));
   },[]);
@@ -140,6 +211,7 @@ export default function App() {
       let postData={};
       if(jsonMatch){ try{postData=JSON.parse(jsonMatch[0].replace(/```json|```/g,"").trim());}catch{} }
       if(!postData.headline&&!postData.caption){ throw new Error("a IA não devolveu um texto válido. Tente de novo."); }
+      setHistory(p=>[{id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),ts:Date.now(),clientId:activeClient?.id||null,clientName:activeClient?.name||"",theme:theme.label,title:article.free?(postData.headline||article.title):article.title,free:!!article.free,artType,tplLabel:tpl?.label||"",headline:postData.headline||"",caption:postData.caption||"",hashtags:postData.hashtags||"",cta:postData.cta||"",slides:postData.slides||null,url:article.url&&article.url!=="#"?article.url:""},...p].slice(0,300));
       setGenerated({...postData,canvaLink:null,artType,tplLabel:tpl?.label,article:article.free?{...article,title:postData.headline||article.title}:article});
       notify("✨ Conteúdo gerado!");
     } catch(e){ notify("Erro: "+e.message,"error"); }
@@ -379,9 +451,23 @@ export default function App() {
             ))}
           </div>
         )}
+        {(()=>{const hs=history.filter(h=>h.clientId===activeClient.id).slice(0,8); return hs.length>0&&(
+          <div style={{padding:"0 16px 16px"}}>
+            <div style={{...S.sectionTitle,padding:"0 0 10px"}}>ÚLTIMOS CONTEÚDOS GERADOS</div>
+            {hs.map(h=>(
+              <div key={h.id} style={{background:"#0f0f0f",border:"1px solid #161616",borderRadius:12,padding:12,marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#555",marginBottom:4}}><span>{h.free?"✍️ Tema livre":h.theme} · {h.artType==="carrossel"?"📚":"🖼️"}</span><span>{new Date(h.ts).toLocaleDateString("pt-BR")}</span></div>
+                <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>{h.headline||h.title}</div>
+                <div style={{fontSize:11,color:"#666",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{h.caption}</div>
+                <button style={{...S.btnCopy,marginTop:8,padding:"5px 12px",fontSize:11}} onClick={()=>{try{navigator.clipboard.writeText([h.caption,h.hashtags].filter(Boolean).join("\n\n")).then(()=>notify("📋 Copiado!"));}catch{}}}>📋 Copiar legenda</button>
+              </div>
+            ))}
+          </div>
+        );})()}
       </div>
     );
   };
+
 
   const FreeView = ()=>{
     if(!activeClient) return null;
@@ -577,17 +663,38 @@ export default function App() {
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>🔑 API Status</div>
           <div style={{color:apiOk?"#22c55e":"#f97316",fontSize:14}}>{apiOk===null?"Verificando...":apiOk?"✅ Groq conectado (Llama 3.3 70B)":"❌ Configure GROQ_API_KEY no Netlify"}</div>
         </div>
+        <div style={{background:"#111",border:`1px solid ${cloudCode?"#22c55e44":"#C8A96E44"}`,borderRadius:14,padding:16,marginBottom:12}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>☁️ Nuvem (salvar tudo)</div>
+          {!cloudCode?(
+            <>
+              <div style={{color:"#777",fontSize:12,lineHeight:1.5,marginBottom:10}}>Salva clientes, modelos, temas e o histórico de conteúdos. Crie um <b style={{color:"#C8A96E"}}>código de acesso</b> (mín. 8 caracteres) e use o MESMO código em cada aparelho. Guarde-o: sem ele ninguém acessa seus dados — nem eu consigo recuperar.</div>
+              <input type="password" value={cloudInput} onChange={e=>setCloudInput(e.target.value)} placeholder="Seu código de acesso" style={S.input}/>
+              <button style={S.btnPrimary} onClick={activateCloud}>Ativar nuvem</button>
+            </>
+          ):(
+            <>
+              <div style={{fontSize:14,color:cloudStatus.state==="error"?"#f97316":cloudStatus.state==="syncing"?"#C8A96E":"#22c55e",marginBottom:4}}>
+                {cloudStatus.state==="syncing"?"↻ Sincronizando...":cloudStatus.state==="error"?"⚠️ "+(cloudStatus.msg||"Erro"):"✅ Tudo salvo na nuvem"}
+              </div>
+              {cloudStatus.at&&<div style={{fontSize:11,color:"#555",marginBottom:10}}>Última sincronização: {new Date(cloudStatus.at).toLocaleString("pt-BR")}</div>}
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button style={S.btnSec} onClick={()=>syncPull(cloudCode,false)}>🔄 Sincronizar agora</button>
+                <button style={S.btnCancel} onClick={disconnectCloud}>Desconectar este aparelho</button>
+              </div>
+            </>
+          )}
+        </div>
         <div style={{background:"#111",border:"1px solid #1e1e1e",borderRadius:14,padding:16,marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>👥 Clientes</div>
-          <div style={{color:"#555",fontSize:14}}>{clients.length} cliente(s) cadastrado(s)</div>
+          <div style={{color:"#555",fontSize:14}}>{clients.length} cliente(s) cadastrado(s) · {history.length} conteúdo(s) no histórico</div>
         </div>
         <div style={{background:"#111",border:"1px solid #1e1e1e",borderRadius:14,padding:16,marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>📦 Versão</div>
           <div style={{color:"#555",fontSize:14}}>Agente Social Media M2.0 v1.0</div>
         </div>
-        <button style={{...S.btnCancel,marginTop:8,width:"100%"}}
-          onClick={()=>{lsSet("clients",[]);setClients([]);setActiveClientId(null);notify("🗑️ Dados limpos.");}}>
-          🗑️ Limpar Todos os Dados
+        <button style={{...S.btnCancel,marginTop:8,width:"100%",color:confirmClear?"#ef4444":"#555",borderColor:confirmClear?"#ef4444":"#1e1e1e"}}
+          onClick={()=>{ if(!confirmClear){setConfirmClear(true);setTimeout(()=>setConfirmClear(false),5000);return;} setConfirmClear(false);setClients([]);setHistory([]);setActiveClientId(null);notify(cloudCode?"🗑️ Dados limpos (também na nuvem).":"🗑️ Dados limpos."); }}>
+          {confirmClear?"Toque de novo para confirmar"+(cloudCode?" (apaga também na nuvem)":""):"🗑️ Limpar Todos os Dados"}
         </button>
       </div>
     </div>
@@ -601,6 +708,9 @@ export default function App() {
         <div style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,background:notification.type==="error"?"#1a0808":"#111",border:`1px solid ${notification.type==="error"?"#ef444466":"#C8A96E55"}`,color:notification.type==="error"?"#ef4444":"#C8A96E",fontSize:13,whiteSpace:"nowrap",boxShadow:"0 4px 20px #00000088"}}>
           {notification.msg}
         </div>
+      )}
+      {view==="home"&&!cloudCode&&(
+        <div onClick={()=>setView("settings")} style={{margin:"10px 16px 0",padding:"10px 14px",borderRadius:12,background:"#C8A96E15",border:"1px solid #C8A96E44",color:"#C8A96E",fontSize:12,cursor:"pointer",lineHeight:1.4}}>☁️ Ative a nuvem para salvar todos os clientes e conteúdos (toque aqui)</div>
       )}
       {view==="home"&&HomeView()}
       {view==="client"&&ClientView()}
