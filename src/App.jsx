@@ -733,7 +733,9 @@ export default function App() {
       <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
       <style>{`:root{--bg:#080808;--bg2:#0d0d0d;--card:#111;--card2:#1a1a1a;--bd:#1e1e1e;--bd2:#2a2a2a;--fg:#fff;--fg2:#ccc;--t1:#777;--t2:#555;--t3:#444;--t4:#333;--gold:#C8A96E;--goldbg:#C8A96E;color-scheme:dark}
 :root[data-theme="light"]{--bg:#f6f5f1;--bg2:#fff;--card:#fff;--card2:#efede7;--bd:#d9d5c8;--bd2:#c4bfb0;--fg:#0b0b0b;--fg2:#1f1f1f;--t1:#2f2f2f;--t2:#3d3d3d;--t3:#595959;--t4:#707070;--gold:#5E4510;--goldbg:#C8A96E;color-scheme:light}
-body{background:var(--bg)}
+body{background:var(--bg);font-weight:600}
+button,input,textarea,select{font-family:inherit;font-weight:inherit}
+input::placeholder,textarea::placeholder{font-weight:500}
 @keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box} input:focus{outline:none;border-color:var(--gold)!important} input[type=color]{-webkit-appearance:none} ::-webkit-scrollbar{height:3px;background:var(--card)} ::-webkit-scrollbar-thumb{background:var(--bd2)}`}</style>
       <button aria-label="Alternar tema claro/escuro" title={effTheme==="dark"?"Mudar para claro":"Mudar para escuro"} onClick={()=>setThemeMode(effTheme==="dark"?"light":"dark")}
         style={{position:"absolute",top:14,right:14,zIndex:20,width:38,height:38,borderRadius:"50%",background:"var(--card)",border:"1px solid var(--bd2)",fontSize:19,lineHeight:1,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
