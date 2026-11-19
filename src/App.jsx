@@ -731,8 +731,8 @@ export default function App() {
   return (
     <div style={S.root}>
       <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-      <style>{`:root{--bg:#080808;--bg2:#0d0d0d;--card:#111;--card2:#1a1a1a;--bd:#1e1e1e;--bd2:#2a2a2a;--fg:#fff;--fg2:#ccc;--t1:#777;--t2:#555;--t3:#444;--t4:#333;--gold:#C8A96E;--goldbg:#C8A96E;color-scheme:dark}
-:root[data-theme="light"]{--bg:#f6f5f1;--bg2:#fff;--card:#fff;--card2:#efede7;--bd:#d9d5c8;--bd2:#c4bfb0;--fg:#0b0b0b;--fg2:#1f1f1f;--t1:#2f2f2f;--t2:#3d3d3d;--t3:#595959;--t4:#707070;--gold:#5E4510;--goldbg:#C8A96E;color-scheme:light}
+      <style>{`:root{--bg:#080808;--bg2:#0d0d0d;--card:#111;--card2:#1a1a1a;--bd:#1e1e1e;--bd2:#2a2a2a;--fg:#fff;--fg2:#ccc;--t1:#777;--t2:#555;--t3:#444;--t4:#333;--gold:#C8A96E;--goldbg:#C8A96E;--label:#D4AF37;color-scheme:dark}
+:root[data-theme="light"]{--bg:#f6f5f1;--bg2:#fff;--card:#fff;--card2:#efede7;--bd:#d9d5c8;--bd2:#c4bfb0;--fg:#0b0b0b;--fg2:#1f1f1f;--t1:#2f2f2f;--t2:#3d3d3d;--t3:#595959;--t4:#707070;--gold:#5E4510;--goldbg:#C8A96E;--label:#1f1f1f;color-scheme:light}
 body{background:var(--bg);font-weight:600}
 button,input,textarea,select{font-family:inherit;font-weight:inherit}
 input::placeholder,textarea::placeholder{font-weight:500}
@@ -1016,7 +1016,7 @@ const S = {
   logoSub:{fontSize:9,color:"var(--gold)",letterSpacing:3,marginTop:2},
   backBtn:{background:"none",border:"none",color:"var(--gold)",fontSize:13,cursor:"pointer",padding:0},
   iconBtn:{background:"none",border:"none",color:"var(--t2)",fontSize:18,cursor:"pointer",padding:4},
-  sectionTitle:{fontSize:9,letterSpacing:3,color:"var(--bd2)",padding:"4px 16px 10px"},
+  sectionTitle:{fontSize:11,fontWeight:800,letterSpacing:2.5,color:"var(--label)",padding:"4px 16px 10px"},
   tplLink:{flex:1,minWidth:0,display:"block",textAlign:"center",padding:"7px 10px",background:"#C8A96E11",border:"1px solid #C8A96E33",borderRadius:8,color:"var(--gold)",fontSize:11,textDecoration:"none",fontWeight:600},
   chip:{padding:"5px 10px",borderRadius:20,fontSize:11,cursor:"pointer"},
   label:{display:"block",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#3a3a3a",marginBottom:6},
