@@ -249,7 +249,7 @@ export default function App() {
     <div style={{borderBottom:"1px solid var(--card)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
       <div style={{display:"flex",minWidth:"max-content",padding:"0 12px"}}>
         {clients.map(c=>(
-          <button key={c.id} style={{background:"none",border:"none",borderBottom:`2px solid ${activeClientId===c.id?c.color:"transparent"}`,padding:"8px 12px",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",color:activeClientId===c.id?"var(--fg)":"var(--t3)",fontFamily:"'Montserrat',sans-serif"}}
+          <button key={c.id} style={{background:"none",border:"none",borderBottom:`2px solid ${activeClientId===c.id?c.color:"transparent"}`,padding:"8px 12px",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",color:"var(--ink)",fontFamily:"'Montserrat',sans-serif"}}
             onClick={()=>{setActiveClientId(c.id);setActiveTheme(null);setGenerated(null);setView("client");}}>
             <span style={{width:6,height:6,borderRadius:"50%",background:c.color,flexShrink:0}}/>
             {c.name}
@@ -385,7 +385,7 @@ export default function App() {
                     <div key={i} style={{width:12,height:12,borderRadius:3,background:col,border:"1px solid var(--t4)"}}/>
                   ))}
                 </div>
-                <div style={{fontSize:14,fontWeight:700,fontFamily:"'Montserrat',sans-serif",color:"var(--fg)",marginBottom:2}}>{c.name}</div>
+                <div style={{fontSize:14,fontWeight:700,fontFamily:"'Montserrat',sans-serif",color:"var(--ink)",marginBottom:2}}>{c.name}</div>
                 <div style={{fontSize:11,color:"var(--t2)"}}>{c.niche}</div>
                 <div style={{fontSize:10,color:"var(--t4)",marginTop:4}}>{(c.themes||[]).length} temas</div>
               </div>
@@ -418,7 +418,7 @@ export default function App() {
         <div style={{padding:"12px 16px 14px"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
             <div style={{width:10,height:10,borderRadius:"50%",background:activeClient.color}}/>
-            <div style={{fontSize:20,fontWeight:700,fontFamily:"'Montserrat',sans-serif"}}>{activeClient.name}</div>
+            <div style={{fontSize:20,fontWeight:700,fontFamily:"'Montserrat',sans-serif",color:"var(--ink)"}}>{activeClient.name}</div>
           </div>
           <div style={{color:"var(--t2)",fontSize:13,marginBottom:10}}>{activeClient.niche}</div>
           {(activeClient.brandColors||[]).filter(Boolean).length>0&&(
@@ -498,7 +498,7 @@ export default function App() {
     return (
       <div style={S.page}>
         <div style={S.header}>
-          <button onClick={()=>setView("client")} style={S.backBtn}>← {activeClient.name}</button>
+          <button onClick={()=>setView("client")} style={{...S.backBtn,color:"var(--ink)"}}>← {activeClient.name}</button>
         </div>
         <ClientTabs/>
         <div style={{padding:"16px"}}>
@@ -731,8 +731,8 @@ export default function App() {
   return (
     <div style={S.root}>
       <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-      <style>{`:root{--bg:#080808;--bg2:#0d0d0d;--card:#111;--card2:#1a1a1a;--bd:#1e1e1e;--bd2:#2a2a2a;--fg:#fff;--fg2:#fff;--t1:#f2f2f2;--t2:#e0e0e0;--t3:#c4c4c4;--t4:#a0a0a0;--gold:#C8A96E;--goldbg:#C8A96E;--label:#D4AF37;color-scheme:dark}
-:root[data-theme="light"]{--bg:#f6f5f1;--bg2:#fff;--card:#fff;--card2:#efede7;--bd:#d9d5c8;--bd2:#c4bfb0;--fg:#a01313;--fg2:#a01313;--t1:#a01313;--t2:#a01313;--t3:#b53a3a;--t4:#c46a6a;--gold:#a01313;--goldbg:#C8A96E;--label:#a01313;color-scheme:light}
+      <style>{`:root{--bg:#080808;--bg2:#0d0d0d;--card:#111;--card2:#1a1a1a;--bd:#1e1e1e;--bd2:#2a2a2a;--fg:#fff;--fg2:#fff;--t1:#f2f2f2;--t2:#e0e0e0;--t3:#c4c4c4;--t4:#a0a0a0;--gold:#C8A96E;--goldbg:#C8A96E;--label:#D4AF37;--ink:#fff;--brand:#e23b3b;color-scheme:dark}
+:root[data-theme="light"]{--bg:#f6f5f1;--bg2:#fff;--card:#fff;--card2:#efede7;--bd:#d9d5c8;--bd2:#c4bfb0;--fg:#a01313;--fg2:#a01313;--t1:#a01313;--t2:#a01313;--t3:#b53a3a;--t4:#c46a6a;--gold:#a01313;--goldbg:#C8A96E;--label:#a01313;--ink:#000;--brand:#a01313;color-scheme:light}
 body{background:var(--bg);font-weight:600}
 button,input,textarea,select{font-family:inherit;font-weight:inherit}
 input::placeholder,textarea::placeholder{font-weight:500}
@@ -760,9 +760,9 @@ input::placeholder,textarea::placeholder{font-weight:500}
       {showTplPicker&&pendingArticle&&<TplPicker article={pendingArticle} artType={artType} setArtType={setArtType} client={activeClient} onConfirm={doGenerate} onCanva={doCanva} onCancel={()=>setShowTplPicker(false)}/>}
       {promptModal&&<PromptModal text={promptModal} onClose={()=>setPromptModal(null)} notify={notify}/>}
       {["home","news","client","content","allcontent","settings"].includes(view)&&(
-        <div style={{textAlign:"center",fontSize:11,color:"var(--t1)",padding:"18px 16px 96px",lineHeight:1.5}}>
+        <div style={{textAlign:"center",fontSize:11,color:"var(--ink)",padding:"18px 16px 96px",lineHeight:1.5}}>
           Desenvolvido por{" "}
-          <a href="https://www.marketing2ponto0.com.br" target="_blank" rel="noreferrer" style={{color:"var(--gold)",textDecoration:"none",fontWeight:800}}>Marketing 2.0</a>
+          <a href="https://www.marketing2ponto0.com.br" target="_blank" rel="noreferrer" style={{color:"var(--brand)",textDecoration:"none",fontWeight:800}}>Marketing 2.0</a>
           {" "}<i style={{fontWeight:600}}>- Muito mais que uma agência</i>
         </div>
       )}
