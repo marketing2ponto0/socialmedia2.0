@@ -387,7 +387,7 @@ export default function App() {
                 </div>
                 <div style={{fontSize:14,fontWeight:700,fontFamily:"'Montserrat',sans-serif",color:"var(--ink)",marginBottom:2}}>{c.name}</div>
                 <div style={{fontSize:11,color:"var(--t2)"}}>{c.niche}</div>
-                <div style={{fontSize:10,color:"var(--t4)",marginTop:4}}>{(c.themes||[]).length} temas</div>
+                <div style={{fontSize:10,color:"var(--ink)",marginTop:4}}>{(c.themes||[]).length} temas</div>
               </div>
             ))}
             <div style={{background:"var(--card)",border:"1px dashed var(--bd)",borderRadius:14,padding:16,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}
