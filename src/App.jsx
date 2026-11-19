@@ -762,8 +762,10 @@ input::placeholder,textarea::placeholder{font-weight:500}
       {["home","news","client","content","allcontent","settings"].includes(view)&&(
         <div style={{textAlign:"center",fontSize:11,color:"var(--ink)",padding:"18px 16px 96px",lineHeight:1.5}}>
           Desenvolvido por{" "}
-          <a href="https://www.marketing2ponto0.com.br" target="_blank" rel="noreferrer" style={{color:"var(--brand)",textDecoration:"none",fontWeight:800}}>Marketing 2.0</a>
-          {" "}<i style={{fontWeight:600}}>- Muito mais que uma agência</i>
+          <a href="https://www.marketing2ponto0.com.br" target="_blank" rel="noreferrer" style={{textDecoration:"none",color:"var(--ink)"}}>
+            <span style={{color:"var(--brand)",fontWeight:800}}>Marketing 2.0</span> <i style={{fontWeight:600}}>- Muito mais que uma agência</i>
+          </a>
+          <div style={{marginTop:6,fontSize:10,color:"var(--ink)"}}>© {new Date().getFullYear()} Marketing 2.0 · Todos os direitos reservados</div>
         </div>
       )}
       {["home","news","client","content","allcontent","settings"].includes(view)&&(
