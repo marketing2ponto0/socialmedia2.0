@@ -54,7 +54,7 @@ export default function App() {
   const [generated,setGenerated] = useState(null);
   const [genLoading,setGenLoading] = useState(false);
   const [notification,setNotification] = useState(null);
-  const [allThemes,setAllThemes] = useState(()=>[...ALL_THEMES,...(lsGet("customThemes")||[])]);
+  const [rawThemes,setAllThemes] = useState(()=>[...ALL_THEMES,...(lsGet("customThemes")||[])]);
   const [artType,setArtType] = useState("simples");
   const [selectedTpl,setSelectedTpl] = useState(null);
   const [promptModal,setPromptModal] = useState(null);
@@ -63,12 +63,16 @@ export default function App() {
   const [freeText,setFreeText] = useState("");
   // ── APARÊNCIA: claro / escuro / automático ──
   const [themeMode,setThemeMode] = useState(()=>lsGet("themeMode")||"auto");
+  const [effTheme,setEffTheme] = useState("dark");
+  // no modo claro, as cores dos temas ficam mais escuras para dar leitura
+  const darken=(hex)=>{ const m=/^#([0-9a-f]{6})$/i.exec(hex||""); if(!m) return hex; const n=parseInt(m[1],16); const f=v=>Math.round(v*0.58).toString(16).padStart(2,"0"); return "#"+f(n>>16&255)+f(n>>8&255)+f(n&255); };
+  const allThemes = effTheme==="light"?rawThemes.map(t=>({...t,color:darken(t.color)})):rawThemes;
   useEffect(()=>{
     lsSet("themeMode",themeMode);
     const mq = window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
     const apply=()=>{
       const eff = themeMode==="auto"?(mq&&!mq.matches?"light":"dark"):themeMode;
-      document.documentElement.setAttribute("data-theme",eff);
+      document.documentElement.setAttribute("data-theme",eff); setEffTheme(eff);
       const bg = eff==="light"?"#f6f5f1":"#080808";
       document.documentElement.style.background=bg; document.body.style.background=bg;
       const m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content",bg);
@@ -276,7 +280,7 @@ export default function App() {
         {generated.tplLabel&&<div style={{fontSize:11,color:"var(--t2)",marginBottom:14}}>Modelo: {generated.tplLabel}</div>}
         {generated.canvaLink&&(
           <a href={generated.canvaLink} target="_blank" rel="noreferrer"
-            style={{display:"block",textAlign:"center",padding:"14px",background:"var(--gold)",color:"#000",borderRadius:12,fontWeight:700,fontSize:14,textDecoration:"none",margin:"0 0 16px"}}>
+            style={{display:"block",textAlign:"center",padding:"14px",background:"var(--goldbg)",color:"#000",borderRadius:12,fontWeight:700,fontSize:14,textDecoration:"none",margin:"0 0 16px"}}>
             🎨 Abrir Arte no Canva →
           </a>
         )}
@@ -503,7 +507,7 @@ export default function App() {
           <textarea value={freeText} onChange={e=>setFreeText(e.target.value)} rows={6}
             placeholder={"Ex.: Dicas para proteger os olhos do sol no verão\n\nou cole aqui um trecho de texto, ideia, promoção, data comemorativa..."}
             style={{width:"100%",background:"var(--card)",border:"1px solid var(--bd2)",borderRadius:10,color:"var(--fg)",padding:12,fontSize:14,fontFamily:"'Montserrat',sans-serif",resize:"vertical"}}/>
-          <button onClick={go} disabled={genLoading} style={{width:"100%",marginTop:10,background:"var(--gold)",color:"#000",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:700,cursor:"pointer",opacity:genLoading?.6:1}}>✨ Escolher modelo e criar</button>
+          <button onClick={go} disabled={genLoading} style={{width:"100%",marginTop:10,background:"var(--goldbg)",color:"#000",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:700,cursor:"pointer",opacity:genLoading?.6:1}}>✨ Escolher modelo e criar</button>
           <div style={{marginTop:14}}><GeneratedPanel theme={null}/></div>
         </div>
       </div>
@@ -727,17 +731,21 @@ export default function App() {
   return (
     <div style={S.root}>
       <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-      <style>{`:root{--bg:#080808;--bg2:#0d0d0d;--card:#111;--card2:#1a1a1a;--bd:#1e1e1e;--bd2:#2a2a2a;--fg:#fff;--fg2:#ccc;--t1:#777;--t2:#555;--t3:#444;--t4:#333;--gold:#C8A96E;color-scheme:dark}
-:root[data-theme="light"]{--bg:#f6f5f1;--bg2:#fff;--card:#fff;--card2:#efede7;--bd:#e2dfd6;--bd2:#d3cfc2;--fg:#151515;--fg2:#333;--t1:#555;--t2:#666;--t3:#888;--t4:#aaa;--gold:#8A6A2A;color-scheme:light}
+      <style>{`:root{--bg:#080808;--bg2:#0d0d0d;--card:#111;--card2:#1a1a1a;--bd:#1e1e1e;--bd2:#2a2a2a;--fg:#fff;--fg2:#ccc;--t1:#777;--t2:#555;--t3:#444;--t4:#333;--gold:#C8A96E;--goldbg:#C8A96E;color-scheme:dark}
+:root[data-theme="light"]{--bg:#f6f5f1;--bg2:#fff;--card:#fff;--card2:#efede7;--bd:#d9d5c8;--bd2:#c4bfb0;--fg:#0b0b0b;--fg2:#1f1f1f;--t1:#2f2f2f;--t2:#3d3d3d;--t3:#595959;--t4:#707070;--gold:#5E4510;--goldbg:#C8A96E;color-scheme:light}
 body{background:var(--bg)}
 @keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box} input:focus{outline:none;border-color:var(--gold)!important} input[type=color]{-webkit-appearance:none} ::-webkit-scrollbar{height:3px;background:var(--card)} ::-webkit-scrollbar-thumb{background:var(--bd2)}`}</style>
+      <button aria-label="Alternar tema claro/escuro" title={effTheme==="dark"?"Mudar para claro":"Mudar para escuro"} onClick={()=>setThemeMode(effTheme==="dark"?"light":"dark")}
+        style={{position:"absolute",top:14,right:14,zIndex:20,width:38,height:38,borderRadius:"50%",background:"var(--card)",border:"1px solid var(--bd2)",fontSize:19,lineHeight:1,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+        {effTheme==="dark"?"☀️":"🌙"}
+      </button>
       {notification&&(
         <div style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,background:notification.type==="error"?"#1a0808":"var(--card)",border:`1px solid ${notification.type==="error"?"#ef444466":"#C8A96E55"}`,color:notification.type==="error"?"#ef4444":"var(--gold)",fontSize:13,whiteSpace:"nowrap",boxShadow:"0 4px 20px #00000088"}}>
           {notification.msg}
         </div>
       )}
       {view==="home"&&!cloudCode&&(
-        <div onClick={()=>setView("settings")} style={{margin:"10px 16px 0",padding:"10px 14px",borderRadius:12,background:"#C8A96E15",border:"1px solid #C8A96E44",color:"var(--gold)",fontSize:12,cursor:"pointer",lineHeight:1.4}}>☁️ Ative a nuvem para salvar todos os clientes e conteúdos (toque aqui)</div>
+        <div onClick={()=>setView("settings")} style={{margin:"10px 58px 0 16px",padding:"10px 14px",borderRadius:12,background:"#C8A96E15",border:"1px solid #C8A96E44",color:"var(--gold)",fontSize:12,cursor:"pointer",lineHeight:1.4}}>☁️ Ative a nuvem para salvar todos os clientes e conteúdos (toque aqui)</div>
       )}
       {view==="home"&&HomeView()}
       {view==="client"&&ClientView()}
@@ -999,9 +1007,9 @@ function PromptModal({text,onClose,notify}){
 }
 
 const S = {
-  root:{background:"var(--bg)",minHeight:"100vh",maxWidth:480,margin:"0 auto",fontFamily:"'Montserrat',sans-serif",color:"var(--fg)",paddingBottom:80},
+  root:{position:"relative",background:"var(--bg)",minHeight:"100vh",maxWidth:480,margin:"0 auto",fontFamily:"'Montserrat',sans-serif",color:"var(--fg)",paddingBottom:80},
   page:{paddingTop:8},
-  header:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px 10px"},
+  header:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 58px 10px 16px"},
   logo:{fontSize:22,fontWeight:800,fontFamily:"'Montserrat',sans-serif"},
   logoSub:{fontSize:9,color:"var(--gold)",letterSpacing:3,marginTop:2},
   backBtn:{background:"none",border:"none",color:"var(--gold)",fontSize:13,cursor:"pointer",padding:0},
@@ -1011,7 +1019,7 @@ const S = {
   chip:{padding:"5px 10px",borderRadius:20,fontSize:11,cursor:"pointer"},
   label:{display:"block",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#3a3a3a",marginBottom:6},
   input:{width:"100%",background:"var(--bg2)",border:"1px solid var(--bd)",borderRadius:10,padding:"11px 13px",color:"var(--fg)",fontSize:13,marginBottom:14,fontFamily:"'Montserrat',sans-serif"},
-  btnPrimary:{background:"var(--gold)",color:"#000",border:"none",borderRadius:20,padding:"12px 22px",fontSize:13,fontWeight:700,cursor:"pointer"},
+  btnPrimary:{background:"var(--goldbg)",color:"#000",border:"none",borderRadius:20,padding:"12px 22px",fontSize:13,fontWeight:700,cursor:"pointer"},
   btnSec:{background:"var(--card2)",color:"var(--gold)",border:"1px solid #C8A96E33",borderRadius:20,padding:"11px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"},
   btnCancel:{background:"var(--card)",color:"var(--t2)",border:"1px solid var(--bd)",borderRadius:20,padding:"9px 16px",fontSize:12,cursor:"pointer"},
   btnCopy:{background:"var(--card2)",color:"var(--gold)",border:"1px solid #C8A96E33",borderRadius:20,padding:"9px 14px",fontSize:12,cursor:"pointer"},
