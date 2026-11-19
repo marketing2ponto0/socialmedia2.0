@@ -760,6 +760,13 @@ input::placeholder,textarea::placeholder{font-weight:500}
       {showTplPicker&&pendingArticle&&<TplPicker article={pendingArticle} artType={artType} setArtType={setArtType} client={activeClient} onConfirm={doGenerate} onCanva={doCanva} onCancel={()=>setShowTplPicker(false)}/>}
       {promptModal&&<PromptModal text={promptModal} onClose={()=>setPromptModal(null)} notify={notify}/>}
       {["home","news","client","content","allcontent","settings"].includes(view)&&(
+        <div style={{textAlign:"center",fontSize:11,color:"var(--t1)",padding:"18px 16px 96px",lineHeight:1.5}}>
+          Desenvolvido por{" "}
+          <a href="https://www.marketing2ponto0.com.br" target="_blank" rel="noreferrer" style={{color:"var(--gold)",textDecoration:"none",fontWeight:800}}>Marketing 2.0</a>
+          {" "}<i style={{fontWeight:600}}>- Muito mais que uma agência</i>
+        </div>
+      )}
+      {["home","news","client","content","allcontent","settings"].includes(view)&&(
         <nav style={S.nav}>
           <button style={{...S.navBtn,color:view==="home"?"var(--gold)":"var(--t3)"}} onClick={()=>setView("home")}>
             <span style={{fontSize:20}}>🏠</span><span style={{fontSize:9,letterSpacing:1}}>INÍCIO</span>
